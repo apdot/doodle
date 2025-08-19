@@ -1,49 +1,14 @@
-local Path = require("plenary.path")
-
-local data_path = string.format("%s/doodle", vim.fn.stdpath("data"))
-local path_exists = false
+local FileUtil = require("doodle.utils.fileutil")
 
 local DoodleDisc = {}
 DoodleDisc.__index = DoodleDisc
 
-local function create_data_path_if_not_exists()
-    if path_exists then
-	return
-    end
-
-    local path = Path:new(data_path)
-    if not path:exists() then
-	path:mkdir()
-    end
-    path_exists = true
-end
-
----@field project string
----@return string
-local function hash(project)
-    return vim.fn.sha256(project)
-end
-
----@field config DoodleConfig
----@return string
-local function get_filename(config)
-    return hash(config.settings.project())
-end
-
----@field config DoodleConfig
----@return string
-local function get_fullpath(config)
-    local filename = get_filename(config)
-    return string.format("%s/%s", data_path, filename)
-end
-
 ---@field data string
 ---@field config DoodleConfig
-local function write_disc(data, config)
-    create_data_path_if_not_exists()
+local function write_disc(data, filename, config)
+    FileUtil.create_data_path_if_not_exists()
 
-    local fullpath = get_fullpath(config)
-    local path = Path:new(fullpath)
+    local path = FileUtil.getPath(filename)
     local encoded_data = config.operations.encode(data)
 
     path:write(encoded_data, "w")
@@ -51,23 +16,49 @@ end
 
 ---@field config DoodleConfig
 ---@return string
-local function read_disc(config)
-    create_data_path_if_not_exists()
+local function read_disc(filename, config)
+    FileUtil.create_data_path_if_not_exists()
 
-    local fullpath = get_fullpath(config)
-    local path = Path:new(fullpath)
+    local path = FileUtil.getPath(filename)
     if not path:exists() then
-	write_disc({}, config)
+	write_disc({}, filename, config)
     end
 
     local data = path:read()
     if not data or data == "" then
-	write_disc({}, config)
+	write_disc({}, filename, config)
 	data = "{}"
     end
 
     local decoded_data = config.operations.decode(data)
     return decoded_data
+end
+
+---@field config DoodleConfig
+---@return DoodleDisc
+function DoodleDisc:new(config)
+    local ok1, data = pcall(read_disc, config.settings.project(), config)
+    local ok2, global_data = pcall(read_disc, config.settings.global(), config)
+    return setmetatable({
+	config = config,
+	failed = not (ok1 and ok2),
+	data = data,
+	global = global_data
+    }, self)
+end
+
+---@param project string
+---@return string[]
+function DoodleDisc:fetch_global(project)
+    if self.failed then
+	error("Error occurred while fetching Doodle data")
+    end
+
+    if not self.global[project] then
+	self.global[project] = {}
+    end
+
+    return self.global[project][project] or {}
 end
 
 ---@param project string
@@ -86,7 +77,8 @@ function DoodleDisc:fetch_note(project, branch)
 end
 
 function DoodleDisc:sync()
-   pcall(write_disc, self.data, self.config)
+    pcall(write_disc, self.data, self.config.settings.project(), self.config)
+    pcall(write_disc, self.global, self.config.settings.global(), self.config)
 end
 
 function DoodleDisc:update(project, branch, note)
@@ -97,15 +89,12 @@ function DoodleDisc:update(project, branch, note)
     self.data[project][branch] = note.body
 end
 
----@field config DoodleConfig
----@return DoodleDisc
-function DoodleDisc:new(config)
-    local ok, data = pcall(read_disc, config)
-    return setmetatable({
-	config = config,
-	failed = not ok,
-	data = data
-    }, self)
+function DoodleDisc:update_global(project, note)
+    if not self.global[project] then
+	self.global[project] = {}
+    end
+
+    self.global[project][project] = note.body
 end
 
 return DoodleDisc
