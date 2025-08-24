@@ -3,7 +3,7 @@ local Job = require("plenary.job")
 
 local M = {}
 
-local data_path = string.format("%s/doodle", vim.fn.stdpath("data"))
+M.data_path = string.format("%s/doodle", vim.fn.stdpath("data"))
 local path_exists = false
 
 function M.create_data_path_if_not_exists()
@@ -11,7 +11,7 @@ function M.create_data_path_if_not_exists()
 	return
     end
 
-    local path = Path:new(data_path)
+    local path = Path:new(M.data_path)
     if not path:exists() then
 	path:mkdir()
     end
@@ -34,7 +34,7 @@ end
 ---@return string
 local function get_fullpath(str)
     local filename = get_filename(str)
-    return string.format("%s/%s", data_path, filename)
+    return string.format("%s/%s", M.data_path, filename)
 end
 
 function M.getPath(str)
