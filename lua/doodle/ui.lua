@@ -1,36 +1,45 @@
+local View = require("doodle.display.view")
+local FinderBuffer = require("doodle.display.finderbuffer")
+local Present = require("doodle.display.present")
 local DoodleBuffer = require("doodle.buffer")
 
-local scopes = { "Project", "Branch", "Global" }
-local scope_marks = { "P", "B", "G" }
-local ns
+local ns = vim.api.nvim_create_namespace("doodle_ns")
+
+---@class DoodleFinderItem
+---@field id integer
+---@field note string
+---@field directory string
+---@field new_note string
+---@field new_directories string[]
+
+---@class DoodleUI
+---@field win_id integer
+---@field bufnr integer
+---@field current_scope integer
+---@field root string
+---@field branch string
+---@field breadcrumbs { [1]: string, [2]: string }[]
+---@field notes { [string]: DoodleNote }
+---@field directories { [string]: DoodleDirectory }
+---@field db DoodleDB
+---@field settings DoodleSettings
 
 local DoodleUI = {}
 DoodleUI.__index = DoodleUI
 
-function DoodleUI:new(settings)
+function DoodleUI:new(settings, db)
     return setmetatable({
 	win_id = nil,
 	bufnr = nil,
-	active_note = nil,
-	branch_note = nil,
-	global_note = nil,
 	current_scope = 1,
+	root = nil,
+	branch = nil,
+	breadcrumbs = nil,
+	notes = {},
+	directories = {},
+	db = db,
 	settings = settings
     }, self)
-end
-
-function DoodleUI:close()
-    if self.bufnr ~= nil and vim.api.nvim_buf_is_valid(self.bufnr) then
-	vim.api.nvim_buf_delete(self.bufnr, { force = true })
-    end
-
-    if self.win_id ~= nil and vim.api.nvim_win_is_valid(self.win_id) then
-	vim.api.nvim_win_close(self.win_id, true)
-    end
-
-    self.active_list = nil
-    self.win_id = nil
-    self.bufnr = nil
 end
 
 function DoodleUI:get_ui_content()
@@ -47,102 +56,18 @@ function DoodleUI:get_current_note()
     end
 end
 
-function DoodleUI:save()
-    local p, b, g, unmarked = self:get_ui_content()
-
-    local current_note = self:get_current_note()
-    current_note:update(unmarked)
-
-    self.active_note:append(p)
-    self.global_note:append(g)
-    if self.branch_note then
-	self.branch_note:append(b)
-    end
-end
-
-function DoodleUI:create_window()
-    local width = math.min(math.floor(vim.o.columns * 0.8), 64)
-    local height = math.floor(vim.o.lines * 0.8)
-
-    ns = vim.api.nvim_create_namespace("doodle_ns")
-
-    local bufnr = vim.api.nvim_create_buf(false, true)
-    local win_id = vim.api.nvim_open_win(bufnr, true, {
-	relative = "editor",
-	-- title = "Doodle",
-	-- title_pos = "right",
-	row = math.floor(((vim.o.lines - height) / 2) - 1),
-	col = math.floor((vim.o.columns - width) / 2),
-	width = width,
-	height = height,
-	style = "minimal",
-	border = "solid",
-	footer = "doodle",
-	footer_pos = "right"
-
-    })
-
-    if win_id == 0 then
-	self.bufnr = bufnr
-	self:close()
-	error("Failed to open note")
-    end
-
-    DoodleBuffer:setup(bufnr)
-
-    self.win_id = win_id
-    vim.api.nvim_set_option_value("number", true, {
-	win = win_id,
-    })
-
-    return win_id, bufnr
-end
-
-local function render_scope_line(bufnr, current_scope)
-    local virt_text = {}
-    for i, scope in ipairs(scopes) do
-	if i == current_scope then
-	    table.insert(virt_text, { " " .. scope .. " ", "Keyword" })  -- active
-	else
-	    table.insert(virt_text, { " " .. scope .. " ", "Comment" })  -- inactive
-	end
-
-	if i < #scopes then
-	    table.insert(virt_text, { "|", "Comment" })
-	end
-    end
-
-    vim.api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)
-    vim.api.nvim_buf_set_extmark(bufnr, ns, 0, 0, {
-	virt_text = virt_text,
-	virt_text_pos = "overlay",
-    })
-end
-
-local function draw_virtual_hline(bufnr, win, lnum)
-    local width = vim.api.nvim_win_get_width(win)
-    local line = string.rep("─", width)
-    vim.api.nvim_buf_set_extmark(bufnr, ns, lnum, 0, {
-	virt_text = {{line, "Comment"}},
-	virt_text_pos = "overlay",
-    })
-end
-
-local function render_body(bufnr, win_id, note)
-    vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr })
-    local body = note and note:display(bufnr, win_id) or {"", "<Git repository not found>"}
-    vim.api.nvim_buf_set_lines(bufnr, 1, -1, false, body)
-end
-
-function DoodleUI:render()
-    local note = self:get_current_note()
-    render_body(self.bufnr, self.win_id, note)
-    render_scope_line(self.bufnr, self.current_scope)
-    draw_virtual_hline(self.bufnr, self.win_id, 1)
-    if not note then
-	vim.api.nvim_set_option_value("modifiable", false, { buf = self.bufnr })
-    end
-end
+-- function DoodleUI:save()
+--     local p, b, g, unmarked = self:get_ui_content()
+--
+--     local current_note = self:get_current_note()
+--     current_note:update(unmarked)
+--
+--     self.active_note:append(p)
+--     self.global_note:append(g)
+--     if self.branch_note then
+-- 	self.branch_note:append(b)
+--     end
+-- end
 
 function DoodleUI:toggle_view(note)
     if note == nil or self.win_id ~= nil then
@@ -155,7 +80,7 @@ function DoodleUI:toggle_view(note)
     self.win_id = win_id
     self.bufnr = bufnr
     self.active_note = note
-    self.global_note = note.global_note
+    self.global_note = note.global_noteui
     self.branch_note = note.branch_note
 
     self:render()
@@ -168,6 +93,8 @@ local function mark_scope(bufnr, current_scope, scope_idx, start_row, end_row)
 	    vim.api.nvim_buf_set_extmark(bufnr, ns, i-1, 0, {
 		sign_text = mark,
 		sign_hl_group = scope_idx == 1 and "Keyword" or scope_idx == 2 and "Identifier" or "Type",
+		right_gravity = false,
+		end_right_gravity = true,
 	    })
 	end
     end
@@ -214,6 +141,137 @@ function DoodleUI:pin_global()
 
     local start_row, end_row = get_start_and_end_row()
     mark_scope(self.bufnr, self.current_scope, 3, start_row, end_row)
+end
+
+function DoodleUI:save()
+    local parent = self.breadcrumbs[#self.breadcrumbs][1]
+    print("parent in save", parent)
+    self.db:save(self.root, self.branch, parent, self.notes, self.directories)
+end
+
+function DoodleUI:mark_deleted()
+    for _, note in pairs(self.notes) do
+	if note.status ~= 1 then
+	    note.status = 2
+	end
+    end
+    for _, directory in pairs(self.directories) do
+	if directory.status ~= 1 then
+	    directory.status = 2
+	end
+    end
+end
+
+---@param parsed DoodleFinderItem[]
+function DoodleUI:update_finder(parsed)
+    for _, line in ipairs(parsed) do
+	local curr_parent = self.breadcrumbs[#self.breadcrumbs][1]
+	if line.id ~= nil then
+	    if line.directory ~= nil then
+		local dir = self.directories[line.id]
+		if not dir then
+		    -- move operation
+		    dir = { id = line.id }
+		    self.directories[line.id] = dir
+		elseif dir.status == 1 then
+		    -- copy operation
+		    print("deep copy", line.id, line.directory)
+		    local copy_id = self.db:deep_copy_directory(line.id, self.root, self.branch, curr_parent)
+		    dir = { id = copy_id }
+		    self.directories[copy_id] = dir
+		end
+		dir.name = line.directory
+		dir.parent = curr_parent
+		dir.status = 1
+		curr_parent = dir.id
+	    elseif line.note ~= nil then
+		local note = self.notes[line.id]
+		if not note then
+		    -- move operation
+		    note = { id = line.id }
+		    self.notes[line.id] = note
+		elseif note.status == 1 then
+		    -- copy operation
+		    local copy_id = self.db:copy_note(line.id, self.root, self.branch, curr_parent)
+		    note = { id = copy_id }
+		    self.notes[copy_id] = note
+		end
+		note.title = line.note
+		note.parent = curr_parent
+		note.status = 1
+	    end
+	end
+
+	for _, dir in ipairs(line.new_directories) do
+	    local new_dir = self.db:create_directory(self.root, self.branch, curr_parent, dir)
+	    if curr_parent == self.breadcrumbs[#self.breadcrumbs][1] then
+		self.directories[new_dir] = { id = new_dir, name = dir, status = 1 }
+	    end
+	    curr_parent = new_dir
+	end
+	if line.new_note then
+	    local new_note = self.db:create_note(self.root, self.branch, curr_parent, line.new_note)
+	    if curr_parent == self.breadcrumbs[#self.breadcrumbs][1] then
+		self.notes[new_note] = { id = new_note, title = line.new_note, status = 1 }
+	    end
+	end
+    end
+
+    self:mark_deleted()
+end
+
+function DoodleUI:load_current_directory()
+    local notes, directories = self.db:load_finder(self.breadcrumbs[#self.breadcrumbs][1])
+    self.notes, self.directories = {}, {}
+    for _, note in ipairs(notes) do
+	note.status = 1
+	self.notes[note.id] = note
+    end
+    for _, directory in ipairs(directories) do
+	directory.status = 1
+	self.directories[directory.id] = directory
+    end
+end
+
+function DoodleUI:prepare_root()
+    self.branch = nil
+    if self.current_scope == 1 then
+	self.root = self.settings.project()
+    elseif self.current_scope == 2 then
+	self.root = self.settings.project()
+	self.branch = self.settings.branch()
+    else
+	self.root = self.settings.global()
+    end
+    local dir_id = self.db:create_root_if_not_exists(self.root, self.branch)
+    self.breadcrumbs = { { dir_id, self.root } }
+end
+
+function DoodleUI:render()
+    local content = Present.get_finder_content(self.notes, self.directories)
+    View.render(self.bufnr, self.win_id, content, self.current_scope)
+end
+
+function DoodleUI:toggle_finder()
+    if self.win_id ~= nil then
+	View.close(self.bufnr, self.win_id)
+	self.bufnr, self.win_id = nil, nil
+	return
+    end
+
+    self.bufnr, self.win_id = View.create_window()
+
+    FinderBuffer.setup(self.bufnr)
+
+    if not self.win_id then
+	return
+    end
+
+    if not self.root then
+	self:prepare_root()
+	self:load_current_directory()
+    end
+    self:render()
 end
 
 return DoodleUI
