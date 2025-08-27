@@ -2,6 +2,8 @@ local FormatUtil = require("doodle.utils.formatutil")
 
 local M = {}
 
+---@param line string
+---@return DoodleFinderItem
 function M.parse_finder_line(line)
     line = FormatUtil.trim(line)
     local parsed_line = {}

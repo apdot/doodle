@@ -2,6 +2,9 @@ local Present = {}
 
 local ID = "@@@"
 
+---@param notes { [integer]: DoodleNote }
+---@param directories { [integer]: DoodleDirectory }
+---@return string[]
 function Present.get_finder_content(notes, directories)
     local display = {}
 
@@ -23,6 +26,15 @@ function Present.get_finder_content(notes, directories)
 	    end
 	end
     end
+
+    return display
+end
+
+---@param blob_content string
+---@return string[] 
+function Present.get_note_content(blob_content)
+    local display = vim.split(blob_content, "\n", { plain = true })
+    table.insert(display, 1, "")
 
     return display
 end

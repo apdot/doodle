@@ -41,8 +41,6 @@ function DoodleConfig.get_default()
 	    decode = function (str)
 		return vim.json.decode(str)
 	    end,
-
-
 	}
     }
 end

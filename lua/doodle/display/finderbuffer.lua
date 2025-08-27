@@ -1,7 +1,10 @@
 local Parser = require("doodle.parser")
+local DoodleBlob = require("doodle.blob")
 
 local M = {}
 
+---@param scope integer
+---@return integer
 local function clamp_scope(scope)
     if scope < 1 then
 	return 3
@@ -15,13 +18,12 @@ end
 ---@param bufnr integer
 ---@return DoodleFinderItem[]
 local function get_content(bufnr)
-  local lines = vim.api.nvim_buf_get_lines(bufnr, 2, -1, false)
-  return Parser.parse_finder(lines)
+    local lines = vim.api.nvim_buf_get_lines(bufnr, 2, -1, false)
+    return Parser.parse_finder(lines)
 end
 
----@param bufnr integer
 ---@return DoodleFinderItem
-local function get_line(bufnr)
+local function get_line()
     local line = vim.api.nvim_get_current_line()
     return Parser.parse_finder_line(line)
 end
@@ -36,13 +38,16 @@ local function skip_concealed_id()
     end
 end
 
+---@param bufnr integer
 function M.setup(bufnr)
     local ui = require("doodle").ui
 
     if vim.api.nvim_buf_get_name(bufnr) == "" then
 	vim.api.nvim_buf_set_name(bufnr, "__doodle_menu__")
     end
+
     vim.api.nvim_set_option_value("buftype", "acwrite", { buf = bufnr })
+
     vim.api.nvim_create_autocmd({"BufWriteCmd"}, {
 	buffer = bufnr,
 	callback = function ()
@@ -51,6 +56,7 @@ function M.setup(bufnr)
 	    ui:render()
 	end
     })
+
     vim.api.nvim_buf_call(bufnr, function()
 	vim.cmd([[syntax match DoodleConcealID /^@@@.\{-}\s/ conceal]])
     end)
@@ -58,95 +64,95 @@ function M.setup(bufnr)
     vim.api.nvim_create_autocmd({ "BufLeave" }, {
 	buffer = bufnr,
 	callback = function()
-		if ui.settings.auto_save then
-		    local parsed = get_content(bufnr)
-		    ui:update_finder(parsed)
-		end
-		vim.schedule(function ()
-		    ui:toggle_finder()
-		end)
-	    end
-	})
-
-	vim.keymap.set("n", "<CR>", function()
-	    local parsed_line = get_line(bufnr)
-	    if not parsed_line or parsed_line.id == nil then
-		vim.notify("Save buffer required")
-		return
-	    end
-	    if parsed_line.directory then
-		if ui.settings.auto_save then
-		    local parsed = get_content(bufnr)
-		    ui:update_finder(parsed)
-		end
-		local parent = ui.breadcrumbs[#ui.breadcrumbs][1]
-		ui:save()
-		vim.schedule(function ()
-		    table.insert(ui.breadcrumbs, { parsed_line.id, parsed_line.directory })
-		    ui:load_current_directory()
-		    ui:render()
-		end)
-	    else
-		-- go into note
-	    end
-	end, { buffer = bufnr, silent = true })
-
-	vim.keymap.set("n", "-", function()
 	    if ui.settings.auto_save then
 		local parsed = get_content(bufnr)
 		ui:update_finder(parsed)
 	    end
-	    if #ui.breadcrumbs > 1 then
-		ui:save()
-		table.remove(ui.breadcrumbs)
+	    vim.schedule(function ()
+		ui:toggle_finder()
+	    end)
+	end
+    })
+
+    vim.keymap.set("n", "<CR>", function()
+	local parsed_line = get_line()
+	if not parsed_line or parsed_line.id == nil then
+	    vim.notify("Save buffer required")
+	    return
+	end
+	if parsed_line.directory then
+	    if ui.settings.auto_save then
+		local parsed = get_content(bufnr)
+		ui:update_finder(parsed)
+	    end
+	    ui:save()
+	    vim.schedule(function ()
+		table.insert(ui.breadcrumbs, { parsed_line.id, parsed_line.directory })
 		ui:load_current_directory()
-	    end
-	    ui:render()
-	end, { buffer = bufnr, silent = true })
+		ui:render()
+	    end)
+	elseif parsed_line.note then
+	    ui.blob = DoodleBlob.get(parsed_line.id, ui.db)
+	    ui:toggle_note()
+	end
+    end, { buffer = bufnr, silent = true })
 
-	vim.keymap.set("n", "_", function()
-	    if ui.settings.auto_save then
-		local parsed = get_content(bufnr)
-		ui:update_finder(parsed)
-	    end
-	    if #ui.breadcrumbs > 1 then
-		ui:save()
-		ui.breadcrumbs = { ui.breadcrumbs[1] }
-		ui:load_current_directory()
-	    end
-	    ui:render()
-	end, { buffer = bufnr, silent = true })
-
-	vim.keymap.set("n", "<TAB>", function()
-	    local new_scope = clamp_scope(ui.current_scope + 1)
-	    ui.current_scope = new_scope
-	    if ui.settings.auto_save then
-		local parsed = get_content(bufnr)
-		ui:update_finder(parsed)
-		ui:save()
-	    end
-	    ui:prepare_root()
+    vim.keymap.set("n", "-", function()
+	if ui.settings.auto_save then
+	    local parsed = get_content(bufnr)
+	    ui:update_finder(parsed)
+	end
+	if #ui.breadcrumbs > 1 then
+	    ui:save()
+	    table.remove(ui.breadcrumbs)
 	    ui:load_current_directory()
-	    ui:render()
-	end, { buffer = bufnr, silent = true })
+	end
+	ui:render()
+    end, { buffer = bufnr, silent = true })
 
-	vim.keymap.set("n", "<S-TAB>", function()
-	    local new_scope = clamp_scope(ui.current_scope - 1)
-	    ui.current_scope = new_scope
-	    if ui.settings.auto_save then
-		local parsed = get_content(bufnr)
-		ui:update_finder(parsed)
-		ui:save()
-	    end
-	    ui:prepare_root()
+    vim.keymap.set("n", "_", function()
+	if ui.settings.auto_save then
+	    local parsed = get_content(bufnr)
+	    ui:update_finder(parsed)
+	end
+	if #ui.breadcrumbs > 1 then
+	    ui:save()
+	    ui.breadcrumbs = { ui.breadcrumbs[1] }
 	    ui:load_current_directory()
-	    ui:render()
-	end, { buffer = bufnr, silent = true })
+	end
+	ui:render()
+    end, { buffer = bufnr, silent = true })
 
-	vim.api.nvim_create_autocmd({ "CursorMoved", "CursorMovedI" }, {
-	    group = vim.api.nvim_create_augroup("DoodleSkipIDs", { clear = true }),
-	    callback = skip_concealed_id,
-	})
-    end
+    vim.keymap.set("n", "<TAB>", function()
+	local new_scope = clamp_scope(ui.current_scope + 1)
+	ui.current_scope = new_scope
+	if ui.settings.auto_save then
+	    local parsed = get_content(bufnr)
+	    ui:update_finder(parsed)
+	    ui:save()
+	end
+	ui:prepare_root()
+	ui:load_current_directory()
+	ui:render()
+    end, { buffer = bufnr, silent = true })
 
-    return M
+    vim.keymap.set("n", "<S-TAB>", function()
+	local new_scope = clamp_scope(ui.current_scope - 1)
+	ui.current_scope = new_scope
+	if ui.settings.auto_save then
+	    local parsed = get_content(bufnr)
+	    ui:update_finder(parsed)
+	    ui:save()
+	end
+	ui:prepare_root()
+	ui:load_current_directory()
+	ui:render()
+    end, { buffer = bufnr, silent = true })
+
+    vim.api.nvim_create_autocmd({ "CursorMoved", "CursorMovedI" }, {
+	group = vim.api.nvim_create_augroup("DoodleSkipIDs", { clear = true }),
+	callback = skip_concealed_id,
+    })
+end
+
+return M
