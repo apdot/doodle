@@ -1,18 +1,16 @@
 local sqlite = require("sqlite")
 local FileUtil = require("doodle.utils.fileutil")
 local DBUtil = require("doodle.utils.dbutil")
+local DoodleNote = require("doodle.note")
+local DoodleDirectory = require("doodle.directory")
 
+---@class DoodleDB
+---@field config DoodleConfig
+---@field _conn table
 local DoodleDB = {}
 DoodleDB.__index = DoodleDB
 
----@class DoodleDirectory
----@field id integer
----@field project string
----@field branch string
----@field parent integer
----@field name string
----@field created_at integer
----@field updated_at integer
+local function now() return os.time() end
 
 local function _db_path()
     FileUtil.create_data_path_if_not_exists()
@@ -48,7 +46,7 @@ function DoodleDB:ensure_schema()
 	title 		= 	{ "text" },
 	created_at	= 	{ "integer" },
 	updated_at 	= 	{ "integer" },
-	deleted 	= 	{ "boolean", default = "0" },
+	status 		= 	{ "integer", default = 1 },
 	ensure		= 	true
     })
 
@@ -60,7 +58,7 @@ function DoodleDB:ensure_schema()
 	name 		= 	{ "text" },
 	created_at 	= 	{ "integer" },
 	updated_at 	= 	{ "integer" },
-	deleted 	= 	{ "boolean", default = "0" },
+	status 		= 	{ "integer", default = 1 },
 	ensure		= 	true
     })
 
@@ -78,12 +76,15 @@ function DoodleDB:setup()
     self:ensure_schema()
 end
 
-function DoodleDB:load_finder(parent, branch)
-    print("load_finder", parent, branch)
+---@param parent integer 
+---@return DoodleNote[]
+---@return DoodleDirectory[]
+function DoodleDB:load_finder(parent)
+    print("load_finder", parent)
     local notes = self._conn:select("note", {
 	where = {
 	    parent = parent,
-	    deleted = false
+	    status = "<" .. 2
 	},
 	order_by = { asc = { "title" , "created_at" } }
     })
@@ -95,7 +96,7 @@ function DoodleDB:load_finder(parent, branch)
     local directories = self._conn:select("directory", {
 	where = {
 	    parent = parent,
-	    deleted = false
+	    status = "<" .. 2
 	},
 	order_by = { asc = { "name" , "created_at" } }
     })
@@ -104,48 +105,107 @@ function DoodleDB:load_finder(parent, branch)
 	print(dir.id, dir.project, dir.branch, dir.name, dir.created_at, dir.updated_at)
     end
 
-    return notes or {}, directories or {}
+    return DoodleNote.from_list(notes) or {}, DoodleDirectory.from_list(directories) or {}
 end
 
-function DoodleDB:create_blob(note_id, content)
+---@param blob DoodleBlob
+---@return integer
+function DoodleDB:create_blob(blob)
     local ok, id = self._conn:insert("blob", {
-	note_id = note_id,
-	content = content
+	note_id = blob.note_id,
+	content = blob.content,
+	created_at = now(),
+	updated_at = now()
     })
     return id
 end
 
-function DoodleDB:create_note(project, branch, parent, title)
-    local ok, id = self._conn:insert("note", DBUtil.dict({
-	project = project,
-	branch = branch,
-	title = title,
-	parent = parent
-    }))
-    return id
+---@param note_id integer
+---@return table
+function DoodleDB:get_blob(note_id)
+    local blob = self._conn:select("blob", {
+	where = { note_id = note_id }
+    })
+    if not blob or #blob == 0 then
+	return {}
+    end
+
+    return blob[1]
 end
 
-function DoodleDB:update_note(id, project, branch, parent, title)
-    self._conn:update("note", {
-	where = { id = id },
+---@param blob DoodleBlob
+function DoodleDB:update_blob(blob)
+    self._conn:update("blob", {
+	where = DBUtil.dict({
+	    id = blob.id
+	}),
 	set = DBUtil.dict({
-	    project = project,
-	    branch = branch,
-	    parent = parent,
-	    title = title,
-	    deleted = false
+	    content = blob.content,
+	    updated_at = now()
 	})
     })
 end
 
-function DoodleDB:delete_note(id)
+---@param note DoodleNote
+---@return integer
+function DoodleDB:create_note(note)
+    local ok, id = self._conn:insert("note", DBUtil.dict({
+	project = note.project,
+	branch = note.branch,
+	title = note.title,
+	parent = note.parent,
+	created_at = now(),
+	updated_at = now()
+    }))
+    return id
+end
+
+---@param id integer
+---@return table
+function DoodleDB:get_note(id)
+    local note = self._conn:select("note", {
+	where = { id = id }
+    })
+
+    if not note or #note == 0 then
+	return {}
+    end
+
+    return note[1]
+end
+
+---@param note DoodleNote
+function DoodleDB:update_note(note)
     self._conn:update("note", {
-	where = { id = id },
-	set = { deleted = true }
+	where = { id = note.id },
+	set = DBUtil.dict({
+	    project = note.project,
+	    branch = note.branch,
+	    parent = note.parent,
+	    title = note.title,
+	    status = note.status,
+	    updated_at = now()
+	})
     })
 end
 
-function DoodleDB:copy_note(id, project, branch, parent)
+
+---@param id integer
+function DoodleDB:delete_note(id)
+    self._conn:update("note", {
+	where = { id = id },
+	set = {
+	    status = 2,
+	    updated_at = now()
+	}
+    })
+end
+
+---@param id integer
+---@param parent integer
+---@return integer
+function DoodleDB:copy_note(id, parent)
+    ---@type DoodleNote
     local notes = self._conn:select("note", {
 	where = { id = id }
     })
@@ -155,8 +215,10 @@ function DoodleDB:copy_note(id, project, branch, parent)
     end
 
     local note = notes[1]
-    local copy_id = self:create_note(project, branch, parent, note.title)
+    note.parent = parent
+    local copy_id = self:create_note(note)
 
+    ---@type DoodleBlob
     local blob = self._conn:select("blob", {
 	where = { note_id = id }
     })
@@ -166,42 +228,67 @@ function DoodleDB:copy_note(id, project, branch, parent)
     end
 
     blob = blob[1]
-    self:create_blob(copy_id, blob.content)
+    blob.note_id = copy_id
+    self:create_blob(blob)
 
     return copy_id
 end
 
-function DoodleDB:create_directory(project, branch, parent, name)
+---@param directory DoodleDirectory
+---@return integer
+function DoodleDB:create_directory(directory)
     local ok, id = self._conn:insert("directory", DBUtil.dict({
-	project = project,
-	branch = branch,
-	parent = parent,
-	name = name
+	project = directory.project,
+	branch = directory.branch,
+	parent = directory.parent,
+	name = directory.name,
+	created_at = now(),
+	updated_at = now()
     }))
     return id
 end
 
-function DoodleDB:update_directory(id, project, branch, parent, name)
+---@param id integer
+---@return table
+function DoodleDB:get_directory(id)
+    local directory = self._conn:select("directory", {
+	where = { id = id }
+    })
+
+    if not directory or #directory == 0 then
+	return {}
+    end
+
+    return directory[1]
+end
+
+---@param directory DoodleDirectory
+function DoodleDB:update_directory(directory)
     self._conn:update("directory", {
-	where = { id = id },
+	where = { id = directory.id },
 	set = DBUtil.dict({
-	    project = project,
-	    branch = branch,
-	    parent = parent,
-	    name = name,
-	    deleted = false
+	    project = directory.project,
+	    branch = directory.branch,
+	    parent = directory.parent,
+	    name = directory.name,
+	    status = directory.status,
+	    updated_at = now()
 	})
     })
 end
 
+---@param id integer
 function DoodleDB:delete_directory(id)
     self._conn:update("directory", {
 	where = { id = id },
-	set = { deleted = true }
+	set = { status = 2 }
     })
 end
 
-function DoodleDB:deep_copy_directory(id, project, branch, parent)
+---@param id integer
+---@param parent integer
+---@return integer
+function DoodleDB:deep_copy_directory(id, parent)
     local dir = self._conn:select("directory", {
 	where = { id = id }
     })
@@ -211,28 +298,30 @@ function DoodleDB:deep_copy_directory(id, project, branch, parent)
     end
 
     dir = dir[1]
-    print("deep copy", id, project, branch, parent, dir.id, dir.name)
-    local copy_id = self:create_directory(project, branch, parent, dir.name)
+    dir.parent = parent
+    local copy_id = self:create_directory(dir)
 
     local sub_notes = self._conn:select("note", {
 	where = { parent = id }
     })
     for _, note in ipairs(sub_notes) do
-	self:copy_note(note.id, project, branch, copy_id)
+	self:copy_note(note.id, copy_id)
     end
 
     local sub_directories = self._conn:select("directory", {
 	where = { parent = id }
     })
-    for _, directory in ipairs(sub_directories) do
-	self:deep_copy_directory(directory.id, project, branch, copy_id)
+    for _, sub_directory in ipairs(sub_directories) do
+	self:deep_copy_directory(sub_directory.id, copy_id)
     end
 
     return copy_id
 end
 
+---@param root string
+---@param branch string
+---@return integer
 function DoodleDB:create_root_if_not_exists(root, branch)
-    local dir_id
     local dir = self._conn:select("directory", {
 	where = DBUtil.where({
 	    project = root,
@@ -242,74 +331,51 @@ function DoodleDB:create_root_if_not_exists(root, branch)
     })
 
     if not dir or #dir == 0 then
-	print("root not found")
-	dir_id = self:create_directory(root, branch, nil, root)
-	self:create_note(root, branch, dir_id, "Quick Note")
-    else
-	dir_id = dir[1].id
+	local root_dir = DoodleDirectory.create({
+	    project = root,
+	    branch = branch,
+	    parent = vim.NIL,
+	    name = root
+	}, self)
+
+	DoodleNote.create({
+	    project = root,
+	    branch = branch,
+	    parent = root_dir.id,
+	    title = "Quick Note"
+	}, self)
+
+	return root_dir.id
     end
 
-    return dir_id
+    return dir[1].id
 end
 
 function DoodleDB:garbage_collect()
     self._conn:delete("directory", {
-	where = { deleted = true }
+	where = { status = 2 }
     })
     self._conn:delete("note", {
-	where = { deleted = true }
+	where = { status = 2 }
     })
 end
 
-function DoodleDB:save(project, branch, parent, notes, directories)
+---@param notes DoodleNote[] 
+---@param directories DoodleDirectory[]
+function DoodleDB:save(notes, directories)
     for _, directory in pairs(directories) do
 	if not directory.id then
-	    self:create_directory(project, branch, parent, directory.name)
+	    self:create_directory(directory)
 	else
-	    if directory.status == 2 then
-		self:delete_directory(directory.id)
-	    else
-		self:update_directory(directory.id, project, branch, parent, directory.name)
-	    end
+	    self:update_directory(directory)
 	end
     end
     for _, note in pairs(notes) do
 	if not note.id then
-	    self:create_note(project, branch, parent, note.title)
+	    self:create_note(note)
 	else
-	    if note.status == 2 then
-		self:delete_note(note.id)
-	    else
-		self:update_note(note.id, project, branch, parent, note.title)
-	    end
+	    self:update_note(note)
 	end
-    end
-end
-
-local function now() return os.time() end
-
-function DoodleDB:save_note()
-    local p = "myproject"	
-    local t = "mytitle"	
-    local ts = now()
-
-    self._conn:insert("notes", {
-	project 	= 	p,
-	title		= 	t,
-	created_at 	= 	now(),
-	updated_at	= 	now()
-    })
-end
-
-function DoodleDB:load_note()
-    local notes = self._conn:select("notes", {
-	where = {
-	    project = "myproject"
-	}
-    })
-
-    for k, note in pairs(notes) do
-	print(note.id, note.project, note.branch, note.title, note.created_at, note.updated_at)
     end
 end
 
