@@ -180,7 +180,7 @@ function DoodleUI:render()
         bufnr, win_id = self.bufnr, self.win_id
     end
 
-    View.render(bufnr, win_id, content, self.current_scope)
+    View.render(bufnr, win_id, content, self.current_scope, self.breadcrumbs)
 end
 
 function DoodleUI:toggle_note()

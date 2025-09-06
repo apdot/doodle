@@ -94,13 +94,26 @@ local function render_scope_line(bufnr, win_id, current_scope)
     draw_virtual_hline(bufnr, win_id, 1)
 end
 
+---@param win_id integer
+---@param breadcrumbs table
+local function render_breadcrumbs(win_id, breadcrumbs)
+    local path = vim.tbl_map(function (crumb)
+        return crumb[2]
+    end, breadcrumbs)
+    vim.api.nvim_win_set_config(win_id, {
+        footer = table.concat(path, " > "),
+    })
+end
+
 ---@param bufnr integer
 ---@param win_id integer
 ---@param content string[]
 ---@param scope integer
-function View.render(bufnr, win_id, content, scope)
+---@param breadcrumbs table
+function View.render(bufnr, win_id, content, scope, breadcrumbs)
     render_content(bufnr, content)
     render_scope_line(bufnr, win_id, scope)
+    render_breadcrumbs(win_id, breadcrumbs)
     --    if not note then
     -- vim.api.nvim_set_option_value("modifiable", false, { buf = self.bufnr })
     --    end
