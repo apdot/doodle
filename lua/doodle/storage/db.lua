@@ -458,7 +458,7 @@ function DoodleDB:create_root_if_not_exists(root, branch)
             branch = branch,
             parent = root_dir.uuid,
             title = "Quick Note",
-            uuid = SyncUtil.hash(root_dir.uuid .. "Quick Note")
+            -- uuid = SyncUtil.hash(root_dir.uuid .. "Quick Note")
         }, self)
 
         return root_dir.uuid

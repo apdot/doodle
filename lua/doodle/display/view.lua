@@ -1,3 +1,5 @@
+local FormatUtil = require("doodle.utils.format_util")
+
 local View = {}
 
 local scopes = { "Project", "Branch", "Global" }
@@ -16,7 +18,7 @@ function View.close(bufnr, win_id)
 end
 
 ---@return integer, integer
-function View.create_window()
+function View.create_floating_window()
     local width = math.min(math.floor(vim.o.columns * 0.8), 64)
     local height = math.floor(vim.o.lines * 0.8)
     local bufnr = vim.api.nvim_create_buf(false, true)
@@ -49,11 +51,65 @@ function View.create_window()
     return bufnr, win_id
 end
 
+function View.create_window()
+    local bufnr = vim.api.nvim_create_buf(false, true)
+    if vim.api.nvim_win_get_config(0).relative ~= "" then
+        vim.cmd("wincmd p") -- jump back to last non-floating window
+    end
+    local win_id = vim.api.nvim_get_current_win()
+    vim.api.nvim_win_set_buf(win_id, bufnr)
+    return bufnr, win_id
+end
+
 ---@param bufnr integer
 ---@param content string[]
 local function render_content(bufnr, content)
     vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr })
     vim.api.nvim_buf_set_lines(bufnr, 1, -1, false, content)
+end
+
+---@param current_scope integer
+---@return table
+function View.scope_line(current_scope)
+    local virt_text = {}
+    for i, scope in ipairs(scopes) do
+        if i == current_scope then
+            table.insert(virt_text, { " " .. scope .. " ", "Keyword" }) -- active
+        else
+            table.insert(virt_text, { " " .. scope .. " ", "Comment" }) -- inactive
+        end
+
+        if i < #scopes then
+            table.insert(virt_text, { "|", "Comment" })
+        end
+    end
+    return virt_text
+end
+
+---@param blob DoodleBlob
+---@param path string[] 
+function View.metadata_line(blob, title, path)
+    local virt_text = {}
+
+    table.insert(virt_text, { " Title: ", "Comment" })
+    table.insert(virt_text, { title .. " ", "Keyword" })
+
+    local created_at = FormatUtil.get_date_time(blob.created_at)
+    table.insert(virt_text, { " Created: ", "Comment" })
+    table.insert(virt_text, { created_at .. " ", "String" })
+
+    table.insert(virt_text, { "| ", "Comment" })
+
+    local updated_at = FormatUtil.get_date_time(blob.updated_at)
+    table.insert(virt_text, { " Updated: ", "Comment" })
+    table.insert(virt_text, { updated_at .. " ", "Type" })
+
+    table.insert(virt_text, { "| ", "Comment" })
+
+    table.insert(virt_text, { " Path: ", "Comment" })
+    table.insert(virt_text, { table.concat(path, "/") .. " ", "Identifier" })
+
+    return virt_text
 end
 
 ---@param bufnr integer
@@ -70,24 +126,11 @@ end
 
 ---@param bufnr integer
 ---@param win_id integer
----@param current_scope integer
-local function render_scope_line(bufnr, win_id, current_scope)
-    local virt_text = {}
-    for i, scope in ipairs(scopes) do
-        if i == current_scope then
-            table.insert(virt_text, { " " .. scope .. " ", "Keyword" }) -- active
-        else
-            table.insert(virt_text, { " " .. scope .. " ", "Comment" }) -- inactive
-        end
-
-        if i < #scopes then
-            table.insert(virt_text, { "|", "Comment" })
-        end
-    end
-
+---@param header table
+local function render_header(bufnr, win_id, header)
     vim.api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)
     vim.api.nvim_buf_set_extmark(bufnr, ns, 0, 0, {
-        virt_text = virt_text,
+        virt_text = header,
         virt_text_pos = "overlay",
     })
 
@@ -95,25 +138,22 @@ local function render_scope_line(bufnr, win_id, current_scope)
 end
 
 ---@param win_id integer
----@param breadcrumbs table
-local function render_breadcrumbs(win_id, breadcrumbs)
-    local path = vim.tbl_map(function (crumb)
-        return crumb[2]
-    end, breadcrumbs)
+---@param path string[]
+local function render_breadcrumbs(win_id, path)
     vim.api.nvim_win_set_config(win_id, {
-        footer = table.concat(path, " > "),
+        footer = table.concat(path, "/"),
     })
 end
 
 ---@param bufnr integer
 ---@param win_id integer
 ---@param content string[]
----@param scope integer
----@param breadcrumbs table
-function View.render(bufnr, win_id, content, scope, breadcrumbs)
+---@param header table
+---@param path string[]
+function View.render(bufnr, win_id, content, header, path)
     render_content(bufnr, content)
-    render_scope_line(bufnr, win_id, scope)
-    render_breadcrumbs(win_id, breadcrumbs)
+    render_header(bufnr, win_id, header)
+    render_breadcrumbs(win_id, path)
     --    if not note then
     -- vim.api.nvim_set_option_value("modifiable", false, { buf = self.bufnr })
     --    end
