@@ -132,7 +132,11 @@ end
 ---@param table_name string
 ---@return table
 function DoodleDB:get_all(table_name)
-    local res = self._conn:select(table_name)
+    local res = self._conn:select(table_name, {
+        where = {
+            status = "<" .. 2
+        }
+    })
 
     if not res or #res == 0 then
         return {}

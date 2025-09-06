@@ -45,6 +45,19 @@ function Doodle:sync()
     end
 end
 
+function Doodle.find_notes()
+    local telescope = require("telescope._extensions.doodle")
+    telescope.find_notes()
+end
+
+function Doodle.telescope()
+    return require("telescope").register_extension({
+        exports = {
+            find_notes = Doodle.find_notes,
+        },
+    })
+end
+
 local doodle = Doodle:new()
 
 ---@param self Doodle
@@ -76,6 +89,10 @@ function Doodle.setup(self, partial_config)
         end,
         { nargs = 0 }
     )
+
+    vim.api.nvim_create_user_command("DoodleFind", Doodle.find_notes, {
+        desc = "Find a doodle note with Telescope"
+    })
 
     return self
 end
