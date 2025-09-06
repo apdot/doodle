@@ -2,8 +2,9 @@ local View = require("doodle.display.view")
 local FinderBuffer = require("doodle.display.finderbuffer")
 local NoteBuffer = require("doodle.display.notebuffer")
 local Present = require("doodle.display.present")
-local DoodleNote = require("doodle.note")
 local DoodleDirectory = require("doodle.directory")
+local DoodleNote = require("doodle.note")
+local DoodleBlob = require("doodle.blob")
 local DBUtil = require("doodle.utils.db_util")
 
 ---@class DoodleFinderItem
@@ -16,9 +17,7 @@ local DBUtil = require("doodle.utils.db_util")
 ---@class DoodleUI
 ---@field win_id integer
 ---@field bufnr integer
----@field note_win_id integer
----@field note_bufnr integer
----@field blob DoodleBlob
+---@field open_notes table<integer, { win_id: integer, title: string, blob: DoodleBlob }>
 ---@field current_scope integer
 ---@field root string
 ---@field branch string
@@ -43,6 +42,7 @@ function DoodleUI:new(settings, db)
         breadcrumbs = nil,
         notes = {},
         directories = {},
+        open_notes = {},
         db = db,
         settings = settings
     }, self)
@@ -51,7 +51,6 @@ end
 function DoodleUI:save()
     DoodleDirectory.save(self.directories, self.db)
     DoodleNote.save(self.notes, self.db)
-    -- self.db:save(self.notes, self.directories)
 end
 
 function DoodleUI:mark_deleted()
@@ -168,46 +167,69 @@ function DoodleUI:prepare_root()
     self.breadcrumbs = { { dir_uuid, self.root } }
 end
 
-function DoodleUI:render()
-    local content
-    local bufnr, win_id
+function DoodleUI:render_finder()
+    local content = Present.get_finder_content(self.notes, self.directories)
+    local bufnr, win_id = self.bufnr, self.win_id
 
-    if self.blob then
-        content = Present.get_note_content(self.blob.content)
-        bufnr, win_id = self.note_bufnr, self.note_win_id
-    else
-        content = Present.get_finder_content(self.notes, self.directories)
-        bufnr, win_id = self.bufnr, self.win_id
-    end
-
-    View.render(bufnr, win_id, content, self.current_scope)
+    View.render(bufnr, win_id, content, View.scope_line(self.current_scope),
+        Present.get_path(self.breadcrumbs))
 end
 
-function DoodleUI:toggle_note()
-    if self.note_win_id ~= nil then
-        View.close(self.note_bufnr, self.note_win_id)
-        self.note_bufnr, self.note_win_id = nil, nil
-        return
+---@param note_id string
+---@param title string
+function DoodleUI:open_note(note_id, title)
+    print("note id", note_id)
+    for bufnr, note_info in pairs(self.open_notes) do
+        if note_info.blob.note_id == note_id and vim.api.nvim_win_is_valid(note_info.win_id) then
+            print("existing note")
+            vim.schedule(function()
+                vim.api.nvim_win_set_buf(note_info.win_id, bufnr)
+            end)
+            return
+        end
     end
 
-    self.note_bufnr, self.note_win_id = View.create_window()
+    local blob = DoodleBlob.get(note_id, self.db)
+    local bufnr, win_id = View.create_window()
+    self.open_notes[bufnr] = {
+        win_id = win_id,
+        title = title,
+        blob = blob
+    }
+    local path = Present.get_path(self.breadcrumbs)
+    table.insert(path, title)
+    NoteBuffer.setup(bufnr, blob, path)
 
-    NoteBuffer.setup(self.note_bufnr)
-
-    if not self.note_win_id then
-        return
+    local content = Present.get_note_content(blob.content)
+    print("note content", content)
+    for _, line in pairs(content) do
+        print(line)
     end
 
-    self:render()
+    View.render(bufnr, win_id, content, View.metadata_line(blob, title, path), path)
+    vim.api.nvim_set_option_value("modified", false, { buf = bufnr })
+end
+
+---@param bufnr integer
+function DoodleUI:close_note(bufnr)
+    local note_info = self.open_notes[bufnr]
+    if not note_info then
+        return
+    end
+    print("closing notes")
+    View.close(bufnr, self.open_notes[bufnr].win_id)
+    self.open_notes[bufnr] = nil
 end
 
 function DoodleUI:toggle_finder()
+    print("win id in tf", self.win_id)
     if self.win_id ~= nil then
+        print("toggle finder closing")
         View.close(self.bufnr, self.win_id)
         self.bufnr, self.win_id = nil, nil
         return
     end
-    self.bufnr, self.win_id = View.create_window()
+    self.bufnr, self.win_id = View.create_floating_window()
 
     FinderBuffer.setup(self.bufnr)
 
@@ -219,7 +241,7 @@ function DoodleUI:toggle_finder()
         self:prepare_root()
         self:load_current_directory()
     end
-    self:render()
+    self:render_finder()
 end
 
 return DoodleUI

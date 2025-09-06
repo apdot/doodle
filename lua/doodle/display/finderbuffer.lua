@@ -53,7 +53,7 @@ function M.setup(bufnr)
         callback = function()
             local parsed = get_content(bufnr)
             ui:update_finder(parsed)
-            ui:render()
+            ui:render_finder()
         end
     })
 
@@ -61,18 +61,20 @@ function M.setup(bufnr)
         vim.cmd([[syntax match DoodleConcealID /^@@@.\{-}\s/ conceal]])
     end)
 
-    vim.api.nvim_create_autocmd({ "BufLeave" }, {
-        buffer = bufnr,
-        callback = function()
-            if ui.settings.auto_save then
-                local parsed = get_content(bufnr)
-                ui:update_finder(parsed)
-            end
-            vim.schedule(function()
-                ui:toggle_finder()
-            end)
-        end
-    })
+    -- this is causing race-conditions
+    -- vim.api.nvim_create_autocmd({ "BufLeave" }, {
+    --     buffer = bufnr,
+    --     callback = function()
+    --         if ui.settings.auto_save then
+    --             local parsed = get_content(bufnr)
+    --             ui:update_finder(parsed)
+    --         end
+    --         vim.schedule(function()
+    --             print("bufleave finder close")
+    --             ui:toggle_finder()
+    --         end)
+    --     end
+    -- })
 
     vim.keymap.set("n", "<CR>", function()
         local parsed_line = get_line()
@@ -89,11 +91,14 @@ function M.setup(bufnr)
             vim.schedule(function()
                 table.insert(ui.breadcrumbs, { parsed_line.uuid, parsed_line.directory })
                 ui:load_current_directory()
-                ui:render()
+                ui:render_finder()
             end)
         elseif parsed_line.note then
-            ui.blob = DoodleBlob.get(parsed_line.uuid, ui.db)
-            ui:toggle_note()
+            print("toggle finder CR")
+            ui:toggle_finder()
+            vim.schedule(function()
+                ui:open_note(parsed_line.uuid, parsed_line.note)
+            end)
         end
     end, { buffer = bufnr, silent = true })
 
@@ -107,7 +112,7 @@ function M.setup(bufnr)
             table.remove(ui.breadcrumbs)
             ui:load_current_directory()
         end
-        ui:render()
+        ui:render_finder()
     end, { buffer = bufnr, silent = true })
 
     vim.keymap.set("n", "_", function()
@@ -120,7 +125,7 @@ function M.setup(bufnr)
             ui.breadcrumbs = { ui.breadcrumbs[1] }
             ui:load_current_directory()
         end
-        ui:render()
+        ui:render_finder()
     end, { buffer = bufnr, silent = true })
 
     vim.keymap.set("n", "<TAB>", function()
@@ -133,7 +138,7 @@ function M.setup(bufnr)
         end
         ui:prepare_root()
         ui:load_current_directory()
-        ui:render()
+        ui:render_finder()
     end, { buffer = bufnr, silent = true })
 
     vim.keymap.set("n", "<S-TAB>", function()
@@ -146,7 +151,7 @@ function M.setup(bufnr)
         end
         ui:prepare_root()
         ui:load_current_directory()
-        ui:render()
+        ui:render_finder()
     end, { buffer = bufnr, silent = true })
 
     vim.api.nvim_create_autocmd({ "CursorMoved", "CursorMovedI" }, {
