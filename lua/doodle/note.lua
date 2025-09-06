@@ -7,6 +7,7 @@ local DBUtil = require("doodle.utils.db_util")
 ---@field parent string
 ---@field title string
 ---@field status integer
+---@field path string
 ---@field uuid string
 ---@field created_at integer
 ---@field updated_at integer
@@ -23,6 +24,7 @@ local columns = {
     "parent",
     "title",
     "status",
+    "path",
     "created_at",
     "updated_at",
     "synced_at"
@@ -39,6 +41,7 @@ function DoodleNote:new(dict)
         parent = dict["parent"],
         title = dict["title"],
         status = dict["status"],
+        path = dict["path"],
         created_at = dict["created_at"],
         updated_at = dict["updated_at"],
         synced_at = dict["synced_at"]
@@ -137,6 +140,7 @@ function DoodleNote.bulk_upsert(dict, where, db)
             note.parent or vim.NIL,
             note.title,
             note.status,
+            note.path,
             note.created_at or DBUtil.now(),
             note.updated_at or DBUtil.now(),
             note.synced_at or vim.NIL

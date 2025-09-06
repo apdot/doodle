@@ -154,6 +154,19 @@ function M.setup(bufnr)
         ui:render_finder()
     end, { buffer = bufnr, silent = true })
 
+    vim.keymap.set("n", "q", function()
+        ui:toggle_finder()
+    end, { buffer = bufnr, silent = true })
+
+    vim.api.nvim_create_autocmd({ "QuitPre" }, {
+        buffer = bufnr,
+        callback = function()
+            vim.schedule(function()
+                ui:toggle_finder()
+            end)
+        end,
+    })
+
     vim.api.nvim_create_autocmd({ "CursorMoved", "CursorMovedI" }, {
         group = vim.api.nvim_create_augroup("DoodleSkipIDs", { clear = true }),
         callback = skip_concealed_id,
