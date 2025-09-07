@@ -70,6 +70,7 @@ end
 function DoodleUI:update_finder(parsed)
     for _, line in ipairs(parsed) do
         local curr_parent = self.breadcrumbs[#self.breadcrumbs][1]
+        local path = Present.get_path(self.breadcrumbs)
         if line.uuid ~= nil then
             if line.directory ~= nil then
                 local dir = self.directories[line.uuid]
@@ -89,6 +90,7 @@ function DoodleUI:update_finder(parsed)
 
                 self.directories[dir.uuid] = dir
                 curr_parent = dir.uuid
+                table.insert(path, dir.name)
             elseif line.note ~= nil then
                 local note = self.notes[line.uuid]
                 if not note then
@@ -103,6 +105,7 @@ function DoodleUI:update_finder(parsed)
                 note.branch = self.branch
                 note.parent = curr_parent
                 note.status = 1
+                note.path = table.concat(path, "/")
                 note.updated_at = DBUtil.now()
 
                 self.notes[note.uuid] = note
@@ -122,12 +125,14 @@ function DoodleUI:update_finder(parsed)
             end
 
             curr_parent = new_dir.uuid
+            table.insert(path, dir)
         end
         if line.new_note then
             local new_note = DoodleNote.create({
                 project = self.root,
                 branch = self.branch,
                 parent = curr_parent,
+                path = table.concat(path, "/"),
                 title = line.new_note
             }, self.db)
 

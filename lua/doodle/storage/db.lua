@@ -48,6 +48,7 @@ function DoodleDB:ensure_schema()
         updated_at = { "integer" },
         synced_at  = { "integer" },
         status     = { "integer", default = 1 },
+        path       = { "text" },
         ensure     = true
     })
 
@@ -130,9 +131,14 @@ function DoodleDB:create_blob(blob)
 end
 
 ---@param table_name string
+---@param where table
 ---@return table
-function DoodleDB:get_all(table_name)
-    local res = self._conn:select(table_name)
+function DoodleDB:get_all(table_name, where)
+    where = where or {}
+
+    local res = self._conn:select(table_name, {
+        where = where
+    })
 
     if not res or #res == 0 then
         return {}
@@ -191,6 +197,7 @@ function DoodleDB:create_note(note)
         branch = note.branch,
         title = note.title,
         parent = note.parent,
+        path = note.path,
         uuid = note.uuid and note.uuid or SyncUtil.uuid(),
         created_at = DBUtil.now(),
         updated_at = DBUtil.now()
@@ -322,41 +329,6 @@ function DoodleDB:get_unsynced(table_name)
     end
 
     return directory
-end
-
----@param directory DoodleDirectory
-function DoodleDB:update_directory(directory)
-    local query = [[
-	UPDATE directory
-	SET
-	    project = :project,
-	    branch = :branch,
-	    parent = :parent,
-	    name = :name,
-	    status = :status,
-	    updated_at = :updated_at
-	WHERE
-	    uuid = :uuid
-	    AND (
-		project IS DISTINCT FROM :project OR
-		branch IS DISTINCT FROM :branch OR
-		parent IS DISTINCT FROM :parent OR
-		name IS DISTINCT FROM :name OR
-		status IS DISTINCT FROM :status
-	    )
-    ]]
-
-    local params = {
-        uuid = directory.uuid,
-        project = directory.project,
-        branch = directory.branch,
-        parent = directory.parent,
-        name = directory.name,
-        status = directory.status,
-        updated_at = DBUtil.now()
-    }
-
-    local ok = self._conn:eval(query, params)
 end
 
 ---@param uuid string

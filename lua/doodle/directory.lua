@@ -102,9 +102,10 @@ function DoodleDirectory.get_unsynced(db)
 end
 
 ---@param db DoodleDB
+---@param where table
 ---@return DoodleDirectory[]
-function DoodleDirectory.get_all(db)
-    local directories = db:get_all(table_name)
+function DoodleDirectory.get_all(db, where)
+    local directories = db:get_all(table_name, where)
 
     return DoodleDirectory.from_list(directories)
 end
