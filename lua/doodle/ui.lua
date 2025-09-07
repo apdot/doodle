@@ -201,7 +201,7 @@ function DoodleUI:open_note(note_id, title)
         title = title,
         blob = blob
     }
-    local path = 
+    local path = Present.get_path(self.breadcrumbs)
     table.insert(path, title)
     NoteBuffer.setup(bufnr, blob, path)
 

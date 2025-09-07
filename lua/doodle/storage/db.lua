@@ -131,12 +131,13 @@ function DoodleDB:create_blob(blob)
 end
 
 ---@param table_name string
+---@param where table
 ---@return table
-function DoodleDB:get_all(table_name)
+function DoodleDB:get_all(table_name, where)
+    where = where or {}
+
     local res = self._conn:select(table_name, {
-        where = {
-            status = "<" .. 2
-        }
+        where = where
     })
 
     if not res or #res == 0 then

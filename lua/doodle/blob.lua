@@ -72,9 +72,10 @@ function DoodleBlob.get_unsynced(db)
 end
 
 ---@param db DoodleDB
+---@param where table
 ---@return DoodleBlob[]
-function DoodleBlob.get_all(db)
-    local blobs = db:get_all(table_name)
+function DoodleBlob.get_all(db, where)
+    local blobs = db:get_all(table_name, where)
 
     return DoodleBlob.from_list(blobs)
 end

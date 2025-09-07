@@ -194,9 +194,9 @@ function DoodleSync:create_snapshot()
     oplog_path:write("", "w")
     self.config.bytes = 0
 
-    local directories = DoodleDirectory.get_all(self.db)
-    local notes = DoodleNote.get_all(self.db)
-    local blobs = DoodleBlob.get_all(self.db)
+    local directories = DoodleDirectory.get_all(self.db, {})
+    local notes = DoodleNote.get_all(self.db, {})
+    local blobs = DoodleBlob.get_all(self.db, {})
 
     local oplog = DoodleOplog:new()
     oplog.directory = directories

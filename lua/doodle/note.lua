@@ -103,9 +103,10 @@ function DoodleNote.get_unsynced(db)
 end
 
 ---@param db DoodleDB
+---@param where table
 ---@return DoodleNote[]
-function DoodleNote.get_all(db)
-    local notes = db:get_all(table_name)
+function DoodleNote.get_all(db, where)
+    local notes = db:get_all(table_name, where)
 
     return DoodleNote.from_list(notes)
 end
