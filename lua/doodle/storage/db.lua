@@ -37,45 +37,80 @@ function DoodleDB:new(config)
 end
 
 function DoodleDB:ensure_schema()
-    self._conn:create("note", {
-        id         = { "integer", "primary", "key" },
-        uuid       = { "text", "unique" },
-        project    = { "text" },
-        branch     = { "text" },
-        parent     = { "string", reference = "directory.uuid", on_delete = "cascade" },
-        title      = { "text" },
-        created_at = { "integer" },
-        updated_at = { "integer" },
-        synced_at  = { "integer" },
-        status     = { "integer", default = 1 },
-        path       = { "text" },
-        ensure     = true
-    })
+    self._conn:execute "pragma foreign_keys = ON"
 
-    self._conn:create("directory", {
-        id         = { "integer", "primary", "key" },
-        uuid       = { "text", "unique" },
-        project    = { "text" },
-        branch     = { "text" },
-        parent     = { "text", reference = "directory.uuid", on_delete = "cascade" },
-        name       = { "text" },
-        created_at = { "integer" },
-        updated_at = { "integer" },
-        synced_at  = { "integer" },
-        status     = { "integer", default = 1 },
-        ensure     = true
-    })
+    local create_note_sql = [[
+        CREATE TABLE IF NOT EXISTS note (
+            id         INTEGER PRIMARY KEY,
+            uuid       TEXT UNIQUE,
+            project    TEXT,
+            branch     TEXT,
+            parent     TEXT REFERENCES directory(uuid) ON DELETE CASCADE,
+            title      TEXT,
+            path       TEXT,
+            created_at INTEGER,
+            updated_at INTEGER,
+            synced_at  INTEGER,
+            status     INTEGER DEFAULT 1
+        );
+    ]]
 
-    self._conn:create("blob", {
-        id         = { "integer", "primary", "key" },
-        uuid       = { "text", "unique" },
-        note_id    = { "text", reference = "note.uuid", on_delete = "cascade" },
-        content    = { "text" },
-        created_at = { "integer" },
-        updated_at = { "integer" },
-        synced_at  = { "integer" },
-        ensure     = true
-    })
+    local create_directory_sql = [[
+        CREATE TABLE IF NOT EXISTS directory (
+            id         INTEGER PRIMARY KEY,
+            uuid       TEXT UNIQUE,
+            project    TEXT,
+            branch     TEXT,
+            parent     TEXT REFERENCES directory(uuid) ON DELETE CASCADE,
+            name       TEXT,
+            created_at INTEGER,
+            updated_at INTEGER,
+            synced_at  INTEGER,
+            status     INTEGER DEFAULT 1
+        );
+    ]]
+
+    local create_blob_sql = [[
+        CREATE TABLE IF NOT EXISTS blob (
+            id         INTEGER PRIMARY KEY,
+            uuid       TEXT UNIQUE,
+            note_id    TEXT REFERENCES note(uuid) ON DELETE CASCADE,
+            content    TEXT,
+            created_at INTEGER,
+            updated_at INTEGER,
+            synced_at  INTEGER
+        );
+    ]]
+
+    local create_tag_sql = [[
+        CREATE TABLE IF NOT EXISTS tag (
+            id         INTEGER PRIMARY KEY,
+            uuid       TEXT UNIQUE,
+            name       TEXT UNIQUE,
+            created_at INTEGER,
+            updated_at INTEGER,
+            synced_at  INTEGER,
+            status     INTEGER DEFAULT 1
+        );
+    ]]
+
+    local create_note_tag_sql = [[
+        CREATE TABLE IF NOT EXISTS note_tag (
+            tag_id     TEXT NOT NULL REFERENCES tag(uuid) ON DELETE CASCADE,
+            note_id    TEXT NOT NULL REFERENCES note(uuid) ON DELETE CASCADE,
+            created_at INTEGER,
+            updated_at INTEGER,
+            synced_at  INTEGER,
+            status     INTEGER DEFAULT 1,
+            PRIMARY KEY (note_id, tag_id)
+        );
+    ]]
+
+    self._conn:eval(create_note_sql)
+    self._conn:eval(create_directory_sql)
+    self._conn:eval(create_blob_sql)
+    self._conn:eval(create_tag_sql)
+    self._conn:eval(create_note_tag_sql)
 end
 
 function DoodleDB:setup()
