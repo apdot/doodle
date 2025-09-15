@@ -17,7 +17,7 @@ function View.close(bufnr, win_id)
     end
 end
 
----@return integer, integer
+---@return integer, integer?
 function View.create_floating_window()
     local width = math.min(math.floor(vim.o.columns * 0.8), 64)
     local height = math.floor(vim.o.lines * 0.8)
@@ -65,6 +65,10 @@ end
 ---@param content string[]
 local function render_content(bufnr, content)
     vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr })
+    print("content", content)
+    for k, v in pairs(content) do
+        print(k, v)
+    end
     vim.api.nvim_buf_set_lines(bufnr, 1, -1, false, content)
 end
 

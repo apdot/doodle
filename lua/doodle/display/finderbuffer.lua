@@ -158,6 +158,10 @@ function M.setup(bufnr)
         ui:toggle_finder()
     end, { buffer = bufnr, silent = true })
 
+    vim.keymap.set("n", "<ESC>", function()
+        ui:toggle_finder()
+    end, { buffer = bufnr, silent = true })
+
     vim.api.nvim_create_autocmd({ "QuitPre" }, {
         buffer = bufnr,
         callback = function()

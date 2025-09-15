@@ -34,13 +34,22 @@ end
 
 ---@param dict table
 ---@return string[]
-function M.get_uuids(dict)
+function M.get_query_uuids(dict)
     local uuids = {}
-    for _, dir in pairs(dict) do
-        table.insert(uuids, ("'%s'"):format(dir.uuid))
+    for _, obj in pairs(dict) do
+        table.insert(uuids, ("'%s'"):format(obj.uuid))
     end
 
     return uuids
+end
+
+---@param dict table
+---@return string[]
+function M.get_uuids(dict)
+    return vim.tbl_map(function(obj)
+        print("obj.uuid", obj.uuid)
+        return obj.uuid
+    end, dict)
 end
 
 ---@param value string

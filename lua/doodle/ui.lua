@@ -6,6 +6,8 @@ local DoodleDirectory = require("doodle.directory")
 local DoodleNote = require("doodle.note")
 local DoodleBlob = require("doodle.blob")
 local DBUtil = require("doodle.utils.db_util")
+local Tag = require("doodle.tags.tag")
+local NoteTag = require("doodle.tags.note_tag")
 
 ---@class DoodleFinderItem
 ---@field uuid string
@@ -49,6 +51,8 @@ function DoodleUI:new(settings, db)
 end
 
 function DoodleUI:save()
+    NoteTag.bulk_map(Present.get_path(self.breadcrumbs),
+        DBUtil.get_uuids(vim.tbl_values(self.notes)), self.db)
     DoodleDirectory.save(self.directories, self.db)
     DoodleNote.save(self.notes, self.db)
 end
@@ -183,6 +187,7 @@ end
 ---@param note_id string
 ---@param title string
 function DoodleUI:open_note(note_id, title)
+    NoteTag.bulk_map(Present.get_path(self.breadcrumbs), { note_id }, self.db)
     print("note id", note_id)
     for bufnr, note_info in pairs(self.open_notes) do
         if note_info.blob.note_id == note_id and vim.api.nvim_win_is_valid(note_info.win_id) then
@@ -203,15 +208,19 @@ function DoodleUI:open_note(note_id, title)
     }
     local path = Present.get_path(self.breadcrumbs)
     table.insert(path, title)
-    NoteBuffer.setup(bufnr, blob, path)
 
-    local content = Present.get_note_content(blob.content)
+    local content = Present.get_note_content(blob.content,
+        NoteTag.get_for_note(note_id, self.db))
     print("note content", content)
     for _, line in pairs(content) do
         print(line)
     end
 
-    View.render(bufnr, win_id, content, View.metadata_line(blob, title, path), path)
+    View.render(bufnr, win_id, content,
+        View.metadata_line(blob, title, path), path)
+
+    NoteBuffer.setup(bufnr, blob, path)
+
     vim.api.nvim_set_option_value("modified", false, { buf = bufnr })
 end
 

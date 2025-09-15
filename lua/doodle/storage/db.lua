@@ -408,6 +408,81 @@ function DoodleDB:deep_copy_directory(uuid, parent)
     return copy_id
 end
 
+---@param tag Tag
+---@return string
+function DoodleDB:create_tag(tag)
+    local dict = DBUtil.dict({
+        name = tag.name,
+        uuid = tag.uuid and tag.uuid or SyncUtil.uuid(),
+        created_at = DBUtil.now(),
+        updated_at = DBUtil.now()
+    })
+
+    self._conn:insert("tag", dict)
+
+    return dict.uuid
+end
+
+---@param name string
+---@return table
+function DoodleDB:get_tag(name)
+    local tag = self._conn:select("tag", {
+        where = { name = name }
+    })
+
+    if not tag or #tag == 0 then
+        return {}
+    end
+
+    return tag[1]
+end
+
+---@param note_id string
+---@return table
+function DoodleDB:get_tags_for_note(note_id)
+    local tags = self._conn:eval(([[
+    SELECT
+        tag.uuid,
+        tag.name,
+        tag.created_at,
+        tag.updated_at,
+        tag.synced_at
+    FROM note_tag 
+    INNER JOIN tag ON note_tag.tag_id = tag.uuid
+    WHERE 
+        note_tag.note_id = '%s' AND note_tag.status < 2
+    ORDER BY note_tag.created_at DESC
+    ]]):format(note_id))
+
+    if not tags or type(tags) == "boolean" or #tags == 0 then
+        return {}
+    end
+
+    return tags
+end
+
+---@param prefix string
+---@return table
+function DoodleDB:search_tag(prefix)
+    return self._conn:eval(([[
+    SELECT * FROM tag WHERE name LIKE '%s'
+    ORDER BY name
+    ]]):format(prefix .. "%"))
+end
+
+---@param note_id string
+function DoodleDB:clear_tag(note_id)
+    self._conn:update("note_tag", {
+        where = DBUtil.dict({
+            note_id = note_id
+        }),
+        set = DBUtil.dict({
+            status = 2,
+            updated_at = DBUtil.now()
+        })
+    })
+end
+
 ---@param table_name string
 ---@param uuids string[]
 ---@param now integer
@@ -424,13 +499,14 @@ end
 ---@param table_name string
 ---@param columns string[]
 ---@param values string
+---@param conflict string
 ---@param where string
-function DoodleDB:bulk_upsert(table_name, columns, values, where)
+function DoodleDB:bulk_upsert(table_name, columns, values, conflict, where)
     local query_parts = {}
 
     table.insert(query_parts, ("INSERT INTO %s (%s)"):format(table_name, table.concat(columns, ",")))
     table.insert(query_parts, ("VALUES %s"):format(values))
-    table.insert(query_parts, "ON CONFLICT(uuid) DO UPDATE SET")
+    table.insert(query_parts, ("ON CONFLICT(%s) DO UPDATE SET"):format(conflict))
     table.insert(query_parts, DBUtil.create_on_conflict(columns))
     table.insert(query_parts, ("WHERE %s"):format(where))
 
@@ -462,6 +538,7 @@ function DoodleDB:create_root_if_not_exists(root, branch)
 
         DoodleNote.create({
             project = root,
+            path = root,
             branch = branch,
             parent = root_dir.uuid,
             title = "Quick Note",

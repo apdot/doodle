@@ -3,7 +3,7 @@ local DBUtil = require("doodle.utils.db_util")
 ---@class DoodleBlob
 ---@field id integer
 ---@field uuid string
----@field note_id integer
+---@field note_id string
 ---@field content string
 ---@field created_at integer
 ---@field updated_at integer
@@ -84,7 +84,7 @@ end
 ---@param now integer
 ---@param db DoodleDB
 function DoodleBlob.mark_synced(dict, now, db)
-    local uuids = DBUtil.get_uuids(dict)
+    local uuids = DBUtil.get_query_uuids(dict)
 
     db:mark_synced(table_name, uuids, now)
 end
@@ -118,7 +118,7 @@ function DoodleBlob.bulk_upsert(dict, where, db)
     end
 
     local values = table.concat(values_dict, ",")
-    db:bulk_upsert(table_name, columns, values, where)
+    db:bulk_upsert(table_name, columns, values, "uuid", where)
 end
 
 ---@param dict table

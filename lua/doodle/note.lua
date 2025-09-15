@@ -115,7 +115,7 @@ end
 ---@param now integer
 ---@param db DoodleDB
 function DoodleNote.mark_synced(dict, now, db)
-    local uuids = DBUtil.get_uuids(dict)
+    local uuids = DBUtil.get_query_uuids(dict)
 
     db:mark_synced(table_name, uuids, now)
 end
@@ -153,7 +153,7 @@ function DoodleNote.bulk_upsert(dict, where, db)
     end
 
     local values = table.concat(values_dict, ",")
-    db:bulk_upsert(table_name, columns, values, where)
+    db:bulk_upsert(table_name, columns, values, "uuid", where)
 end
 
 ---@param dict table
@@ -163,7 +163,7 @@ function DoodleNote.update(dict, db)
     return DoodleNote.bulk_upsert(dict, where, db)
 end
 
----@param dict table
+---@param dict table<string, DoodleNote>
 ---@param db DoodleDB
 function DoodleNote.save(dict, db)
     local where = DBUtil.create_is_distinct(table_name, columns)

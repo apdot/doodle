@@ -31,11 +31,25 @@ function Present.get_finder_content(notes, directories)
     return display
 end
 
+---@param tags Tag[]
+---@return string
+function Present.create_tags(tags)
+    local formatted_tags = { "Tags:" }
+    for _, tag in pairs(tags) do
+        table.insert(formatted_tags, "#" .. tag.name)
+    end
+
+    return table.concat(formatted_tags, " ")
+end
+
 ---@param blob_content string
+---@param tags Tag[]
 ---@return string[]
-function Present.get_note_content(blob_content)
-    local display = vim.split(blob_content, "\n", { plain = true })
-    table.insert(display, 1, "")
+function Present.get_note_content(blob_content, tags)
+    local display = {}
+    table.insert(display, "")
+    table.insert(display, Present.create_tags(tags))
+    vim.list_extend(display, vim.split(blob_content, "\n", { plain = true }))
 
     return display
 end
@@ -46,6 +60,19 @@ function Present.get_path(breadcrumbs)
     return vim.tbl_map(function(crumb)
         return crumb[2]
     end, breadcrumbs)
+end
+
+---@param tag_line string
+---@return string[]
+function Present.get_tags(tag_line)
+    local tags = {}
+    if tag_line and tag_line:lower():match("^tags:") then
+        for tag in tag_line:gmatch("#(%S+)") do
+            table.insert(tags, tag)
+        end
+    end
+
+    return tags
 end
 
 return Present
