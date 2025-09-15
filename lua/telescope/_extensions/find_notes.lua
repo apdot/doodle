@@ -40,15 +40,18 @@ local function make_display(entry)
     return entry.path .. "/" .. entry.title
 end
 
+local function make_ordinal(entry)
+    return entry.tags .. make_display(entry)
+end
+
 local function generate_finder(notes)
     return finders.new_table({
         results = notes,
         entry_maker = function(entry)
-            local display_text = make_display(entry)
             return {
                 value = entry,
-                display = display_text,
-                ordinal = display_text
+                display = make_display(entry),
+                ordinal = make_ordinal(entry)
             }
         end
     })
@@ -62,7 +65,7 @@ local function find_notes(opts)
         ui:load_current_directory()
     end
 
-    local where = { status = "<" .. 2 }
+    local where = {}
     if opts.scope == "Project" then
         where["project"] = ui.root
     elseif opts.scope == "Branch" then
@@ -72,7 +75,11 @@ local function find_notes(opts)
         where["project"] = ui.settings.global()
     end
 
-    local notes = DoodleNote.get_all(ui.db, where)
+    local notes = DoodleNote.get_all_with_tags(ui.db, where)
+    -- print("Notes for telescope")
+    -- for k, v in pairs(notes) do
+    --     print(k,v.title, v.tags)
+    -- end
     local previewer = create_previewer(ui)
     local scope_name;
     if opts.scope ~= nil and opts.scope ~= "all" then

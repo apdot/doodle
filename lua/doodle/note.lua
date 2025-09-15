@@ -1,4 +1,5 @@
 local DBUtil = require("doodle.utils.db_util")
+local NoteTag = require("doodle.tags.note_tag")
 
 ---@class DoodleNote
 ---@field id integer
@@ -70,6 +71,8 @@ function DoodleNote.create(dict, db)
     note.uuid = uuid
     note.status = 1
 
+    NoteTag.bulk_map(vim.split(note.path, "/"), { note.uuid }, db)
+
     return note
 end
 
@@ -109,6 +112,19 @@ function DoodleNote.get_all(db, where)
     local notes = db:get_all(table_name, where)
 
     return DoodleNote.from_list(notes)
+end
+
+---@param db DoodleDB
+---@param dict table
+---@return table
+function DoodleNote.get_all_with_tags(db, dict)
+    local where = DBUtil.get_query_where(dict)
+    if where and #where > 0 then
+        where = where .. " AND "
+    end
+
+    where = where .. "note.status < 2"
+    return db:get_all_notes_with_tags(where)
 end
 
 ---@param dict table

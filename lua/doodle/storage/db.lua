@@ -257,6 +257,24 @@ function DoodleDB:get_note(uuid)
     return note[1]
 end
 
+---@param where string
+function DoodleDB:get_all_notes_with_tags(where)
+    local query = ([[
+    SELECT
+        note.*,
+        GROUP_CONCAT('#' || tag.name) AS tags
+    FROM note
+    LEFT JOIN 
+        note_tag on note.uuid = note_tag.note_id AND note_tag.status < 2
+    LEFT JOIN 
+        tag on note_tag.tag_id = tag.uuid
+    WHERE %s
+    GROUP BY note.uuid
+    ]]):format(where)
+    -- print(query)
+    return self._conn:eval(query)
+end
+
 ---@param note DoodleNote
 function DoodleDB:update_note(note)
     self._conn:update("note", {
@@ -447,9 +465,9 @@ function DoodleDB:get_tags_for_note(note_id)
         tag.created_at,
         tag.updated_at,
         tag.synced_at
-    FROM note_tag 
+    FROM note_tag
     INNER JOIN tag ON note_tag.tag_id = tag.uuid
-    WHERE 
+    WHERE
         note_tag.note_id = '%s' AND note_tag.status < 2
     ORDER BY note_tag.created_at DESC
     ]]):format(note_id))

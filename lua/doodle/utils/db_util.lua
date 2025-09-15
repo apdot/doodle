@@ -34,17 +34,6 @@ end
 
 ---@param dict table
 ---@return string[]
-function M.get_query_uuids(dict)
-    local uuids = {}
-    for _, obj in pairs(dict) do
-        table.insert(uuids, ("'%s'"):format(obj.uuid))
-    end
-
-    return uuids
-end
-
----@param dict table
----@return string[]
 function M.get_uuids(dict)
     return vim.tbl_map(function(obj)
         print("obj.uuid", obj.uuid)
@@ -101,6 +90,28 @@ function M.create_is_distinct(table_name, columns)
     end
 
     return table.concat(is_distinct, " OR\n")
+end
+
+---@param dict table
+---@return string[]
+function M.get_query_uuids(dict)
+    local uuids = {}
+    for _, obj in pairs(dict) do
+        table.insert(uuids, ("'%s'"):format(obj.uuid))
+    end
+
+    return uuids
+end
+
+---@param dict table
+---@return string
+function M.get_query_where(dict)
+    local where = {}
+    for k, v in pairs(dict) do
+        table.insert(where, ("%s = %s"):format(k, format_data(v)))
+    end
+
+    return table.concat(where, " AND ")
 end
 
 return M

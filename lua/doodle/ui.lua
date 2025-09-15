@@ -187,7 +187,6 @@ end
 ---@param note_id string
 ---@param title string
 function DoodleUI:open_note(note_id, title)
-    NoteTag.bulk_map(Present.get_path(self.breadcrumbs), { note_id }, self.db)
     print("note id", note_id)
     for bufnr, note_info in pairs(self.open_notes) do
         if note_info.blob.note_id == note_id and vim.api.nvim_win_is_valid(note_info.win_id) then
@@ -211,10 +210,6 @@ function DoodleUI:open_note(note_id, title)
 
     local content = Present.get_note_content(blob.content,
         NoteTag.get_for_note(note_id, self.db))
-    print("note content", content)
-    for _, line in pairs(content) do
-        print(line)
-    end
 
     View.render(bufnr, win_id, content,
         View.metadata_line(blob, title, path), path)
