@@ -35,12 +35,10 @@ end
 ---@param dict table
 ---@return string[]
 function M.get_uuids(dict)
-    local uuids = {}
-    for _, dir in pairs(dict) do
-        table.insert(uuids, ("'%s'"):format(dir.uuid))
-    end
-
-    return uuids
+    return vim.tbl_map(function(obj)
+        print("obj.uuid", obj.uuid)
+        return obj.uuid
+    end, dict)
 end
 
 ---@param value string
@@ -83,7 +81,7 @@ end
 function M.create_is_distinct(table_name, columns)
     local is_distinct = {}
     for _, column in pairs(columns) do
-        if column ~= "updated_at" and column ~= "synced_at" then
+        if column ~= "created_at" and column ~= "updated_at" and column ~= "synced_at" then
             table.insert(
                 is_distinct,
                 ("%s.%s IS DISTINCT FROM excluded.%s"):format(table_name, column, column)
@@ -92,6 +90,36 @@ function M.create_is_distinct(table_name, columns)
     end
 
     return table.concat(is_distinct, " OR\n")
+end
+
+---@param dict table
+---@return string[]
+function M.get_query_uuids(dict)
+    local uuids = {}
+    for _, obj in pairs(dict) do
+        table.insert(uuids, ("'%s'"):format(obj.uuid))
+    end
+
+    return uuids
+end
+
+---@param dict table
+---@return string
+function M.get_query_where(dict)
+    local where = {}
+    for k, v in pairs(dict) do
+        table.insert(where, ("%s = %s"):format(k, format_data(v)))
+    end
+
+    return table.concat(where, " AND ")
+end
+
+---@param objs table 
+---@param now integer
+function M.update_synced_at(objs, now)
+    for _, obj in pairs(objs) do
+        obj.synced_at = now
+    end
 end
 
 return M

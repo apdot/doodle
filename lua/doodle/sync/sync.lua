@@ -10,6 +10,8 @@ local DoodleOplog = require("doodle.sync.oplog")
 local DoodleDirectory = require("doodle.directory")
 local DoodleNote = require("doodle.note")
 local DoodleBlob = require("doodle.blob")
+local Tag = require("doodle.tags.tag")
+local NoteTag = require("doodle.tags.note_tag")
 
 ---@class DoodleSync
 ---@field ensure boolean
@@ -50,11 +52,11 @@ local function ensure_repo(settings)
     if not ok then
         local oplog = repo:joinpath(oplog_file)
         if not oplog:exists() then
-            oplog:write({}, "w")
+            oplog:write("[]", "w")
         end
         local synclog = repo:joinpath(synclog_file)
         if not synclog:exists() then
-            synclog:write({}, "w")
+            synclog:write("[]", "w")
         end
 
         return GitUtil.push({ oplog_file, synclog }, "initial commit", settings.git_repo)
@@ -107,6 +109,14 @@ function DoodleSync:apply_operations(oplog)
             DoodleBlob.update(oplog.blob, self.db)
         end
         print("applied blob")
+        if #oplog.tag > 0 then
+            Tag.update(oplog.tag, self.db)
+        end
+        print("applied tag")
+        if #oplog.note_tag > 0 then
+            NoteTag.update(oplog.note_tag, self.db)
+        end
+        print("applied notetag")
     end)
 end
 
@@ -194,14 +204,18 @@ function DoodleSync:create_snapshot()
     oplog_path:write("", "w")
     self.config.bytes = 0
 
-    local directories = DoodleDirectory.get_all(self.db, {})
-    local notes = DoodleNote.get_all(self.db, {})
-    local blobs = DoodleBlob.get_all(self.db, {})
+    local directories = DoodleDirectory.get_all(self.db)
+    local notes = DoodleNote.get_all(self.db)
+    local blobs = DoodleBlob.get_all(self.db)
+    local tags = Tag.get_all(self.db)
+    local note_tags = NoteTag.get_all(self.db)
 
     local oplog = DoodleOplog:new()
     oplog.directory = directories
     oplog.note = notes
     oplog.blob = blobs
+    oplog.tag = tags
+    oplog.note_tag = note_tags
 
     local new_snapshot_path = Path:new(self.settings.git_repo .. "/SNAPSHOT-" .. DBUtil.now())
 
@@ -214,11 +228,15 @@ function DoodleSync:append_oplog()
     local directories = DoodleDirectory.get_unsynced(self.db)
     local notes = DoodleNote.get_unsynced(self.db)
     local blobs = DoodleBlob.get_unsynced(self.db)
+    local tags = Tag.get_unsynced(self.db)
+    local note_tags = NoteTag.get_unsynced(self.db)
 
     local oplog = DoodleOplog:new()
     oplog.directory = directories
     oplog.note = notes
     oplog.blob = blobs
+    oplog.tag = tags
+    oplog.note_tag = note_tags
 
     local oplog_path = Path:new(self.settings.git_repo .. "/" .. oplog_file)
     self.config.bytes = oplog_path:_stat().size
@@ -253,9 +271,11 @@ function DoodleSync:push()
         oplog, file_path = self:append_oplog()
     end
 
-    DoodleDirectory.update_synced_at(oplog.directory, now)
-    DoodleNote.update_synced_at(oplog.note, now)
-    DoodleBlob.update_synced_at(oplog.blob, now)
+    DBUtil.update_synced_at(oplog.directory, now)
+    DBUtil.update_synced_at(oplog.note, now)
+    DBUtil.update_synced_at(oplog.blob, now)
+    DBUtil.update_synced_at(oplog.tag, now)
+    DBUtil.update_synced_at(oplog.note_tag, now)
 
     file_path:write(vim.json.encode(oplog) .. "\n", "a")
     if not should_create_snapshot then
@@ -273,6 +293,8 @@ function DoodleSync:push()
         DoodleDirectory.mark_synced(oplog.directory, now, self.db)
         DoodleNote.mark_synced(oplog.note, now, self.db)
         DoodleBlob.mark_synced(oplog.blob, now, self.db)
+        Tag.mark_synced(oplog.tag, now, self.db)
+        NoteTag.mark_synced(oplog.note_tag, now, self.db)
         vim.notify("Git Push completed successfully.")
     end
 end
@@ -284,5 +306,5 @@ function DoodleSync:sync()
     end
 end
 
---test
+
 return DoodleSync

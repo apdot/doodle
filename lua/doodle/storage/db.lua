@@ -37,45 +37,80 @@ function DoodleDB:new(config)
 end
 
 function DoodleDB:ensure_schema()
-    self._conn:create("note", {
-        id         = { "integer", "primary", "key" },
-        uuid       = { "text", "unique" },
-        project    = { "text" },
-        branch     = { "text" },
-        parent     = { "string", reference = "directory.uuid", on_delete = "cascade" },
-        title      = { "text" },
-        created_at = { "integer" },
-        updated_at = { "integer" },
-        synced_at  = { "integer" },
-        status     = { "integer", default = 1 },
-        path       = { "text" },
-        ensure     = true
-    })
+    self._conn:execute "pragma foreign_keys = ON"
 
-    self._conn:create("directory", {
-        id         = { "integer", "primary", "key" },
-        uuid       = { "text", "unique" },
-        project    = { "text" },
-        branch     = { "text" },
-        parent     = { "text", reference = "directory.uuid", on_delete = "cascade" },
-        name       = { "text" },
-        created_at = { "integer" },
-        updated_at = { "integer" },
-        synced_at  = { "integer" },
-        status     = { "integer", default = 1 },
-        ensure     = true
-    })
+    local create_note_sql = [[
+        CREATE TABLE IF NOT EXISTS note (
+            id         INTEGER PRIMARY KEY,
+            uuid       TEXT UNIQUE,
+            project    TEXT,
+            branch     TEXT,
+            parent     TEXT REFERENCES directory(uuid) ON DELETE CASCADE,
+            title      TEXT,
+            path       TEXT,
+            created_at INTEGER,
+            updated_at INTEGER,
+            synced_at  INTEGER,
+            status     INTEGER DEFAULT 1
+        );
+    ]]
 
-    self._conn:create("blob", {
-        id         = { "integer", "primary", "key" },
-        uuid       = { "text", "unique" },
-        note_id    = { "text", reference = "note.uuid", on_delete = "cascade" },
-        content    = { "text" },
-        created_at = { "integer" },
-        updated_at = { "integer" },
-        synced_at  = { "integer" },
-        ensure     = true
-    })
+    local create_directory_sql = [[
+        CREATE TABLE IF NOT EXISTS directory (
+            id         INTEGER PRIMARY KEY,
+            uuid       TEXT UNIQUE,
+            project    TEXT,
+            branch     TEXT,
+            parent     TEXT REFERENCES directory(uuid) ON DELETE CASCADE,
+            name       TEXT,
+            created_at INTEGER,
+            updated_at INTEGER,
+            synced_at  INTEGER,
+            status     INTEGER DEFAULT 1
+        );
+    ]]
+
+    local create_blob_sql = [[
+        CREATE TABLE IF NOT EXISTS blob (
+            id         INTEGER PRIMARY KEY,
+            uuid       TEXT UNIQUE,
+            note_id    TEXT REFERENCES note(uuid) ON DELETE CASCADE,
+            content    TEXT,
+            created_at INTEGER,
+            updated_at INTEGER,
+            synced_at  INTEGER
+        );
+    ]]
+
+    local create_tag_sql = [[
+        CREATE TABLE IF NOT EXISTS tag (
+            id         INTEGER PRIMARY KEY,
+            uuid       TEXT UNIQUE,
+            name       TEXT,
+            created_at INTEGER,
+            updated_at INTEGER,
+            synced_at  INTEGER,
+            status     INTEGER DEFAULT 1
+        );
+    ]]
+
+    local create_note_tag_sql = [[
+        CREATE TABLE IF NOT EXISTS note_tag (
+            tag_id     TEXT NOT NULL REFERENCES tag(uuid) ON DELETE CASCADE,
+            note_id    TEXT NOT NULL REFERENCES note(uuid) ON DELETE CASCADE,
+            created_at INTEGER,
+            updated_at INTEGER,
+            synced_at  INTEGER,
+            status     INTEGER DEFAULT 1,
+            PRIMARY KEY (note_id, tag_id)
+        );
+    ]]
+
+    self._conn:eval(create_note_sql)
+    self._conn:eval(create_directory_sql)
+    self._conn:eval(create_blob_sql)
+    self._conn:eval(create_tag_sql)
+    self._conn:eval(create_note_tag_sql)
 end
 
 function DoodleDB:setup()
@@ -131,14 +166,9 @@ function DoodleDB:create_blob(blob)
 end
 
 ---@param table_name string
----@param where table
 ---@return table
-function DoodleDB:get_all(table_name, where)
-    where = where or {}
-
-    local res = self._conn:select(table_name, {
-        where = where
-    })
+function DoodleDB:get_all(table_name)
+    local res = self._conn:select(table_name)
 
     if not res or #res == 0 then
         return {}
@@ -220,6 +250,24 @@ function DoodleDB:get_note(uuid)
     end
 
     return note[1]
+end
+
+---@param where string
+function DoodleDB:get_all_notes_with_tags(where)
+    local query = ([[
+    SELECT
+        note.*,
+        GROUP_CONCAT('#' || tag.name) AS tags
+    FROM note
+    LEFT JOIN 
+        note_tag on note.uuid = note_tag.note_id AND note_tag.status < 2
+    LEFT JOIN 
+        tag on note_tag.tag_id = tag.uuid
+    WHERE %s
+    GROUP BY note.uuid
+    ]]):format(where)
+    -- print(query)
+    return self._conn:eval(query)
 end
 
 ---@param note DoodleNote
@@ -373,14 +421,90 @@ function DoodleDB:deep_copy_directory(uuid, parent)
     return copy_id
 end
 
+---@param tag Tag
+---@return string
+function DoodleDB:create_tag(tag)
+    local dict = DBUtil.dict({
+        name = tag.name,
+        uuid = tag.uuid and tag.uuid or SyncUtil.uuid(),
+        created_at = DBUtil.now(),
+        updated_at = DBUtil.now()
+    })
+
+    self._conn:insert("tag", dict)
+
+    return dict.uuid
+end
+
+---@param name string
+---@return table
+function DoodleDB:get_tag(name)
+    local tag = self._conn:select("tag", {
+        where = { name = name }
+    })
+
+    if not tag or #tag == 0 then
+        return {}
+    end
+
+    return tag[1]
+end
+
+---@param note_id string
+---@return table
+function DoodleDB:get_tags_for_note(note_id)
+    local tags = self._conn:eval(([[
+    SELECT
+        tag.uuid,
+        tag.name,
+        tag.created_at,
+        tag.updated_at,
+        tag.synced_at
+    FROM note_tag
+    INNER JOIN tag ON note_tag.tag_id = tag.uuid
+    WHERE
+        note_tag.note_id = '%s' AND note_tag.status < 2
+    ORDER BY note_tag.created_at DESC
+    ]]):format(note_id))
+
+    if not tags or type(tags) == "boolean" or #tags == 0 then
+        return {}
+    end
+
+    return tags
+end
+
+---@param prefix string
+---@return table
+function DoodleDB:search_tag(prefix)
+    return self._conn:eval(([[
+    SELECT * FROM tag WHERE name LIKE '%s'
+    ORDER BY name
+    ]]):format(prefix .. "%"))
+end
+
+---@param note_id string
+function DoodleDB:clear_tag(note_id)
+    self._conn:update("note_tag", {
+        where = DBUtil.dict({
+            note_id = note_id
+        }),
+        set = DBUtil.dict({
+            status = 2,
+            updated_at = DBUtil.now()
+        })
+    })
+end
+
 ---@param table_name string
----@param uuids string[]
+---@param primary_key string
+---@param values string
 ---@param now integer
-function DoodleDB:mark_synced(table_name, uuids, now)
+function DoodleDB:mark_synced(table_name, primary_key, values, now)
     local query = ([[
 	UPDATE %s SET synced_at = %s
-	WHERE uuid in (%s)
-    ]]):format(table_name, now, table.concat(uuids, ","))
+	WHERE (%s) IN ( VALUES %s )
+    ]]):format(table_name, now, primary_key, values)
 
     -- print("query", query)
     self._conn:eval(query)
@@ -389,13 +513,14 @@ end
 ---@param table_name string
 ---@param columns string[]
 ---@param values string
+---@param primary_key string
 ---@param where string
-function DoodleDB:bulk_upsert(table_name, columns, values, where)
+function DoodleDB:bulk_upsert(table_name, columns, values, primary_key, where)
     local query_parts = {}
 
     table.insert(query_parts, ("INSERT INTO %s (%s)"):format(table_name, table.concat(columns, ",")))
     table.insert(query_parts, ("VALUES %s"):format(values))
-    table.insert(query_parts, "ON CONFLICT(uuid) DO UPDATE SET")
+    table.insert(query_parts, ("ON CONFLICT(%s) DO UPDATE SET"):format(primary_key))
     table.insert(query_parts, DBUtil.create_on_conflict(columns))
     table.insert(query_parts, ("WHERE %s"):format(where))
 
@@ -427,6 +552,7 @@ function DoodleDB:create_root_if_not_exists(root, branch)
 
         DoodleNote.create({
             project = root,
+            path = root,
             branch = branch,
             parent = root_dir.uuid,
             title = "Quick Note",

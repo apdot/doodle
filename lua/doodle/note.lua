@@ -1,4 +1,5 @@
 local DBUtil = require("doodle.utils.db_util")
+local NoteTag = require("doodle.tags.note_tag")
 
 ---@class DoodleNote
 ---@field id integer
@@ -14,6 +15,8 @@ local DBUtil = require("doodle.utils.db_util")
 ---@field synced_at integer
 local DoodleNote = {}
 DoodleNote.__index = DoodleNote
+
+local primary_key = "uuid"
 
 local table_name = "note"
 
@@ -70,6 +73,8 @@ function DoodleNote.create(dict, db)
     note.uuid = uuid
     note.status = 1
 
+    NoteTag.bulk_map(vim.split(note.path, "/"), { note.uuid }, db)
+
     return note
 end
 
@@ -103,28 +108,38 @@ function DoodleNote.get_unsynced(db)
 end
 
 ---@param db DoodleDB
----@param where table
 ---@return DoodleNote[]
-function DoodleNote.get_all(db, where)
-    local notes = db:get_all(table_name, where)
+function DoodleNote.get_all(db)
+    local notes = db:get_all(table_name)
 
     return DoodleNote.from_list(notes)
+end
+
+---@param db DoodleDB
+---@param dict table
+---@return table
+function DoodleNote.get_all_with_tags(db, dict)
+    local where = DBUtil.get_query_where(dict)
+    if where and #where > 0 then
+        where = where .. " AND "
+    end
+
+    where = where .. "note.status < 2"
+    return db:get_all_notes_with_tags(where)
 end
 
 ---@param dict table
 ---@param now integer
 ---@param db DoodleDB
 function DoodleNote.mark_synced(dict, now, db)
-    local uuids = DBUtil.get_uuids(dict)
+    local uuids = DBUtil.get_query_uuids(dict)
+    local values = {}
+    for _, uuid in pairs(uuids) do
+        table.insert(values, ("(%s)"):format(uuid))
+    end
 
-    db:mark_synced(table_name, uuids, now)
-end
-
----@param notes DoodleNote[]
----@param now integer
-function DoodleNote.update_synced_at(notes, now)
-    for _, note in pairs(notes) do
-        note.synced_at = now
+    if uuids and #uuids > 0 then
+        db:mark_synced(table_name, primary_key, table.concat(values, ","), now)
     end
 end
 
@@ -153,7 +168,7 @@ function DoodleNote.bulk_upsert(dict, where, db)
     end
 
     local values = table.concat(values_dict, ",")
-    db:bulk_upsert(table_name, columns, values, where)
+    db:bulk_upsert(table_name, columns, values, primary_key, where)
 end
 
 ---@param dict table
@@ -163,7 +178,7 @@ function DoodleNote.update(dict, db)
     return DoodleNote.bulk_upsert(dict, where, db)
 end
 
----@param dict table
+---@param dict table<string, DoodleNote>
 ---@param db DoodleDB
 function DoodleNote.save(dict, db)
     local where = DBUtil.create_is_distinct(table_name, columns)

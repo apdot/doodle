@@ -1,21 +1,28 @@
+local Present = require("doodle.display.present")
+local NoteTag = require("doodle.tags.note_tag")
+
 local M = {}
 
----@param scope integer
----@return integer
-local function clamp_scope(scope)
-    if scope < 1 then
-        return 3
-    elseif scope > 3 then
-        return 1
-    else
-        return scope
+---@param bufnr integer
+---@param blob DoodleBlob
+---@param path string[]
+---@param db DoodleDB
+local function update_tags(bufnr, blob, path, db)
+    local tag_line = vim.api.nvim_buf_get_lines(bufnr, 2, 3, false)[1] or ""
+    local tags = Present.get_tags(tag_line)
+    print("tags i got for present")
+    for k, v in pairs(tags) do
+
+        print(k, v)
     end
+    NoteTag.clear(blob.note_id, db)
+    NoteTag.bulk_map(tags, { blob.note_id }, db)
 end
 
 ---@param bufnr integer
 ---@return string
 local function get_content(bufnr)
-    local lines = vim.api.nvim_buf_get_lines(bufnr, 2, -1, false)
+    local lines = vim.api.nvim_buf_get_lines(bufnr, 3, -1, false)
     return table.concat(lines, "\n")
 end
 
@@ -34,6 +41,7 @@ function M.setup(bufnr, blob, path)
     vim.api.nvim_create_autocmd({ "BufWriteCmd" }, {
         buffer = bufnr,
         callback = function(args)
+            update_tags(args.buf, blob, path, ui.db)
             blob.content = get_content(args.buf)
             print("content in save", blob.content)
             blob:save(ui.db)
@@ -42,6 +50,11 @@ function M.setup(bufnr, blob, path)
     })
 
     vim.api.nvim_set_option_value("filetype", "markdown", { buf = bufnr })
+
+    vim.cmd([[
+    syntax match TagHighlight /\%3lTags:\zs.*#\S\+/
+    ]])
+    vim.cmd("highlight default link TagHighlight Special")
 
     vim.api.nvim_create_autocmd({ "BufLeave" }, {
         buffer = bufnr,
@@ -57,6 +70,14 @@ function M.setup(bufnr, blob, path)
         end
     })
 
+    vim.bo[bufnr].omnifunc = "v:lua.doodle.completion.complete_tags"
+
+    vim.keymap.set("i", "<C-l>", "<C-x><C-o>", {
+        buffer = bufnr,
+        remap = true,
+        silent = true
+    })
+    
     -- vim.api.nvim_create_autocmd({ "BufUnload" }, {
     --     buffer = bufnr,
     --     callback = function()

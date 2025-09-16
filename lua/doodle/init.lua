@@ -2,6 +2,7 @@ local DoodleConfig = require("doodle.config")
 local DoodleUI = require("doodle.ui")
 local DoodleDB = require("doodle.storage.db")
 local DoodleSync = require("doodle.sync.sync")
+local Completion = require("doodle.tags.completion")
 
 ---@class Doodle
 ---@field config DoodleConfig
@@ -22,6 +23,7 @@ function Doodle:new()
         _db = db,
         _ui = DoodleUI:new(config.settings, db),
         _sync = DoodleSync:new(config.settings, config.operations, db),
+        completion = Completion,
         hooks_setup = false
     }, self)
 
@@ -50,6 +52,7 @@ function Doodle.find_notes()
 end
 
 local doodle = Doodle:new()
+_G.doodle = doodle
 
 ---@param self Doodle
 ---@param partial_config DoodleConfig

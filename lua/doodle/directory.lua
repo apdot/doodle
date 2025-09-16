@@ -14,6 +14,8 @@ local DBUtil = require("doodle.utils.db_util")
 local DoodleDirectory = {}
 DoodleDirectory.__index = DoodleDirectory
 
+local primary_key = "uuid"
+
 local table_name = "directory"
 
 local columns = {
@@ -102,10 +104,9 @@ function DoodleDirectory.get_unsynced(db)
 end
 
 ---@param db DoodleDB
----@param where table
 ---@return DoodleDirectory[]
-function DoodleDirectory.get_all(db, where)
-    local directories = db:get_all(table_name, where)
+function DoodleDirectory.get_all(db)
+    local directories = db:get_all(table_name)
 
     return DoodleDirectory.from_list(directories)
 end
@@ -114,16 +115,14 @@ end
 ---@param now integer
 ---@param db DoodleDB
 function DoodleDirectory.mark_synced(dict, now, db)
-    local uuids = DBUtil.get_uuids(dict)
+    local uuids = DBUtil.get_query_uuids(dict)
+    local values = {}
+    for _, uuid in pairs(uuids) do
+        table.insert(values, ("(%s)"):format(uuid))
+    end
 
-    db:mark_synced(table_name, uuids, now)
-end
-
----@param directories DoodleDirectory[]
----@param now integer
-function DoodleDirectory.update_synced_at(directories, now)
-    for _, dir in pairs(directories) do
-        dir.synced_at = now
+    if uuids and #uuids > 0 then
+        db:mark_synced(table_name, primary_key, table.concat(values, ","), now)
     end
 end
 
@@ -151,7 +150,7 @@ function DoodleDirectory.bulk_upsert(dict, where, db)
     end
 
     local values = table.concat(values_dict, ",")
-    db:bulk_upsert(table_name, columns, values, where)
+    db:bulk_upsert(table_name, columns, values, primary_key, where)
 end
 
 ---@param dict table
