@@ -9,6 +9,8 @@ local DBUtil = require("doodle.utils.db_util")
 local Tag = {}
 Tag.__index = Tag
 
+local primary_key = "uuid"
+
 local table_name = "tag"
 
 local columns = {
@@ -30,6 +32,26 @@ function Tag:new(dict)
         updated_at = dict["updated_at"],
         synced_at = dict["synced_at"]
     }, self)
+end
+
+---@param dict table
+---@return Tag[]
+function Tag.from_list(dict)
+    local tags = {}
+
+    for _, tag in pairs(dict) do
+        table.insert(tags, Tag:new(tag))
+    end
+
+    return tags
+end
+
+---@param db DoodleDB
+---@return DoodleNote[]
+function Tag.get_unsynced(db)
+    local tags = db:get_unsynced(table_name)
+
+    return Tag.from_list(tags)
 end
 
 ---@param prefix string
@@ -71,6 +93,29 @@ function Tag.get(name, db)
     return nil
 end
 
+---@param db DoodleDB
+---@return Tag[]
+function Tag.get_all(db)
+    local tags = db:get_all(table_name)
+
+    return Tag.from_list(tags)
+end
+
+---@param dict table
+---@param now integer
+---@param db DoodleDB
+function Tag.mark_synced(dict, now, db)
+    local uuids = DBUtil.get_query_uuids(dict)
+    local values = {}
+    for _, uuid in pairs(uuids) do
+        table.insert(values, ("(%s)"):format(uuid))
+    end
+
+    if uuids and #uuids > 0 then
+        db:mark_synced(table_name, primary_key, table.concat(values, ","), now)
+    end
+end
+
 ---@param name string
 ---@param db DoodleDB
 ---@return Tag
@@ -105,19 +150,14 @@ function Tag.bulk_upsert(dict, where, db)
     end
 
     local values = table.concat(values_dict, ",")
-    db:bulk_upsert(table_name, columns, values, "uuid", where)
+    db:bulk_upsert(table_name, columns, values, primary_key, where)
 end
 
 ---@param dict table
----@return Tag[]
-function Tag.from_list(dict)
-    local tags = {}
-
-    for _, tag in pairs(dict) do
-        table.insert(tags, Tag:new(tag))
-    end
-
-    return tags
+---@param db DoodleDB
+function Tag.update(dict, db)
+    local where = ("%s.updated_at < excluded.updated_at"):format(table_name)
+    return Tag.bulk_upsert(dict, where, db)
 end
 
 ---@param tag_names string[]

@@ -155,10 +155,20 @@ function M.setup(bufnr)
     end, { buffer = bufnr, silent = true })
 
     vim.keymap.set("n", "q", function()
+        if ui.settings.auto_save then
+            local parsed = get_content(bufnr)
+            ui:update_finder(parsed)
+            ui:save()
+        end
         ui:toggle_finder()
     end, { buffer = bufnr, silent = true })
 
     vim.keymap.set("n", "<ESC>", function()
+        if ui.settings.auto_save then
+            local parsed = get_content(bufnr)
+            ui:update_finder(parsed)
+            ui:save()
+        end
         ui:toggle_finder()
     end, { buffer = bufnr, silent = true })
 

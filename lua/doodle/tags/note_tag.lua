@@ -11,6 +11,8 @@ local Tag = require("doodle.tags.tag")
 local NoteTag = {}
 NoteTag.__index = NoteTag
 
+local primary_key = "note_id, tag_id"
+
 local table_name = "note_tag"
 
 local columns = {
@@ -34,6 +36,48 @@ function NoteTag:new(dict)
         updated_at = dict["updated_at"],
         synced_at = dict["synced_at"]
     }, self)
+end
+
+---@param dict table
+---@return NoteTag[]
+function NoteTag.from_list(dict)
+    local note_tags = {}
+
+    for _, note_tag in pairs(dict) do
+        table.insert(note_tags, NoteTag:new(note_tag))
+    end
+
+    return note_tags
+end
+
+---@param db DoodleDB
+---@return DoodleNote[]
+function NoteTag.get_unsynced(db)
+    local note_tags = db:get_unsynced(table_name)
+
+    return NoteTag.from_list(note_tags)
+end
+
+---@param db DoodleDB
+---@return NoteTag[]
+function NoteTag.get_all(db)
+    local note_tags = db:get_all(table_name)
+
+    return NoteTag.from_list(note_tags)
+end
+
+---@param dict table
+---@param now integer
+---@param db DoodleDB
+function NoteTag.mark_synced(dict, now, db)
+    local values = {}
+    for _, note_tag in pairs(dict) do
+        table.insert(values, ("('%s', '%s')"):format(note_tag.note_id, note_tag.tag_id))
+    end
+
+    if values and #values > 0 then
+        db:mark_synced(table_name, primary_key, table.concat(values, ","), now)
+    end
 end
 
 ---@param note_id string
@@ -63,7 +107,14 @@ function NoteTag.bulk_upsert(dict, where, db)
     end
 
     local values = table.concat(values_dict, ",")
-    db:bulk_upsert(table_name, columns, values, "tag_id, note_id", where)
+    db:bulk_upsert(table_name, columns, values, primary_key, where)
+end
+
+---@param dict table
+---@param db DoodleDB
+function NoteTag.update(dict, db)
+    local where = ("%s.updated_at < excluded.updated_at"):format(table_name)
+    return NoteTag.bulk_upsert(dict, where, db)
 end
 
 ---@param note_id string

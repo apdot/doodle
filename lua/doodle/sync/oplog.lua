@@ -2,6 +2,8 @@
 ---@field directory DoodleDirectory[]
 ---@field note DoodleNote[]
 ---@field blob DoodleBlob[]
+---@field tag Tag[]
+---@field note_tag NoteTag[]
 local DoodleOplog = {}
 DoodleOplog.__index = DoodleOplog
 
@@ -9,7 +11,9 @@ function DoodleOplog:new()
     return setmetatable({
         directory = {},
         note = {},
-        blob = {}
+        blob = {},
+        tag = {},
+        note_tag = {}
     }, self)
 end
 
@@ -22,9 +26,21 @@ function DoodleOplog.create(data_str)
         for line in data_str:gmatch("([^\n]+)") do
             if line ~= "" then
                 local obj = vim.json.decode(line)
-                vim.list_extend(oplog.directory, obj.directory)
-                vim.list_extend(oplog.note, obj.note)
-                vim.list_extend(oplog.blob, obj.blob)
+                if obj.directory then
+                    vim.list_extend(oplog.directory, obj.directory)
+                end
+                if obj.directory then
+                    vim.list_extend(oplog.note, obj.note)
+                end
+                if obj.directory then
+                    vim.list_extend(oplog.blob, obj.blob)
+                end
+                if obj.directory then
+                    vim.list_extend(oplog.tag, obj.tag)
+                end
+                if obj.directory then
+                    vim.list_extend(oplog.note_tag, obj.note_tag)
+                end
             end
         end
     end

@@ -11,6 +11,8 @@ local DBUtil = require("doodle.utils.db_util")
 local DoodleBlob = {}
 DoodleBlob.__index = DoodleBlob
 
+local primary_key = "uuid"
+
 local table_name = "blob"
 
 local columns = {
@@ -72,10 +74,9 @@ function DoodleBlob.get_unsynced(db)
 end
 
 ---@param db DoodleDB
----@param where table
 ---@return DoodleBlob[]
-function DoodleBlob.get_all(db, where)
-    local blobs = db:get_all(table_name, where)
+function DoodleBlob.get_all(db)
+    local blobs = db:get_all(table_name)
 
     return DoodleBlob.from_list(blobs)
 end
@@ -85,15 +86,13 @@ end
 ---@param db DoodleDB
 function DoodleBlob.mark_synced(dict, now, db)
     local uuids = DBUtil.get_query_uuids(dict)
+    local values = {}
+    for _, uuid in pairs(uuids) do
+        table.insert(values, ("(%s)"):format(uuid))
+    end
 
-    db:mark_synced(table_name, uuids, now)
-end
-
----@param blobs DoodleBlob[]
----@param now integer
-function DoodleBlob.update_synced_at(blobs, now)
-    for _, blob in pairs(blobs) do
-        blob.synced_at = now
+    if uuids and #uuids > 0 then
+        db:mark_synced(table_name, primary_key, table.concat(values, ","), now)
     end
 end
 
@@ -118,7 +117,7 @@ function DoodleBlob.bulk_upsert(dict, where, db)
     end
 
     local values = table.concat(values_dict, ",")
-    db:bulk_upsert(table_name, columns, values, "uuid", where)
+    db:bulk_upsert(table_name, columns, values, primary_key, where)
 end
 
 ---@param dict table

@@ -86,7 +86,7 @@ function DoodleDB:ensure_schema()
         CREATE TABLE IF NOT EXISTS tag (
             id         INTEGER PRIMARY KEY,
             uuid       TEXT UNIQUE,
-            name       TEXT UNIQUE,
+            name       TEXT,
             created_at INTEGER,
             updated_at INTEGER,
             synced_at  INTEGER,
@@ -166,14 +166,9 @@ function DoodleDB:create_blob(blob)
 end
 
 ---@param table_name string
----@param where table
 ---@return table
-function DoodleDB:get_all(table_name, where)
-    where = where or {}
-
-    local res = self._conn:select(table_name, {
-        where = where
-    })
+function DoodleDB:get_all(table_name)
+    local res = self._conn:select(table_name)
 
     if not res or #res == 0 then
         return {}
@@ -502,13 +497,14 @@ function DoodleDB:clear_tag(note_id)
 end
 
 ---@param table_name string
----@param uuids string[]
+---@param primary_key string
+---@param values string
 ---@param now integer
-function DoodleDB:mark_synced(table_name, uuids, now)
+function DoodleDB:mark_synced(table_name, primary_key, values, now)
     local query = ([[
 	UPDATE %s SET synced_at = %s
-	WHERE uuid in (%s)
-    ]]):format(table_name, now, table.concat(uuids, ","))
+	WHERE (%s) IN ( VALUES %s )
+    ]]):format(table_name, now, primary_key, values)
 
     -- print("query", query)
     self._conn:eval(query)
@@ -517,14 +513,14 @@ end
 ---@param table_name string
 ---@param columns string[]
 ---@param values string
----@param conflict string
+---@param primary_key string
 ---@param where string
-function DoodleDB:bulk_upsert(table_name, columns, values, conflict, where)
+function DoodleDB:bulk_upsert(table_name, columns, values, primary_key, where)
     local query_parts = {}
 
     table.insert(query_parts, ("INSERT INTO %s (%s)"):format(table_name, table.concat(columns, ",")))
     table.insert(query_parts, ("VALUES %s"):format(values))
-    table.insert(query_parts, ("ON CONFLICT(%s) DO UPDATE SET"):format(conflict))
+    table.insert(query_parts, ("ON CONFLICT(%s) DO UPDATE SET"):format(primary_key))
     table.insert(query_parts, DBUtil.create_on_conflict(columns))
     table.insert(query_parts, ("WHERE %s"):format(where))
 

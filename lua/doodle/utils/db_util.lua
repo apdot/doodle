@@ -81,7 +81,7 @@ end
 function M.create_is_distinct(table_name, columns)
     local is_distinct = {}
     for _, column in pairs(columns) do
-        if column ~= "updated_at" and column ~= "synced_at" then
+        if column ~= "created_at" and column ~= "updated_at" and column ~= "synced_at" then
             table.insert(
                 is_distinct,
                 ("%s.%s IS DISTINCT FROM excluded.%s"):format(table_name, column, column)
@@ -112,6 +112,14 @@ function M.get_query_where(dict)
     end
 
     return table.concat(where, " AND ")
+end
+
+---@param objs table 
+---@param now integer
+function M.update_synced_at(objs, now)
+    for _, obj in pairs(objs) do
+        obj.synced_at = now
+    end
 end
 
 return M
