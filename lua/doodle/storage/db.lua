@@ -48,6 +48,7 @@ function DoodleDB:ensure_schema()
             parent     TEXT REFERENCES directory(uuid) ON DELETE CASCADE,
             title      TEXT,
             path       TEXT,
+            path_ids   TEXT,
             created_at INTEGER,
             updated_at INTEGER,
             synced_at  INTEGER,
@@ -228,6 +229,7 @@ function DoodleDB:create_note(note)
         title = note.title,
         parent = note.parent,
         path = note.path,
+        path_ids = note.path_ids,
         uuid = note.uuid and note.uuid or SyncUtil.uuid(),
         created_at = DBUtil.now(),
         updated_at = DBUtil.now()
@@ -259,9 +261,9 @@ function DoodleDB:get_all_notes_with_tags(where)
         note.*,
         GROUP_CONCAT('#' || tag.name) AS tags
     FROM note
-    LEFT JOIN 
+    LEFT JOIN
         note_tag on note.uuid = note_tag.note_id AND note_tag.status < 2
-    LEFT JOIN 
+    LEFT JOIN
         tag on note_tag.tag_id = tag.uuid
     WHERE %s
     GROUP BY note.uuid
@@ -553,6 +555,7 @@ function DoodleDB:create_root_if_not_exists(root, branch)
         DoodleNote.create({
             project = root,
             path = root,
+            path_ids = root_dir.uuid,
             branch = branch,
             parent = root_dir.uuid,
             title = "Quick Note",

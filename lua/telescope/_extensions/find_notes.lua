@@ -6,8 +6,17 @@ local conf = require("telescope.config").values
 local previewers = require("telescope.previewers")
 local DoodleNote = require("doodle.note")
 local DoodleBlob = require("doodle.blob")
+local Help = require("doodle.display.help")
 
 local preview_cache = {}
+
+local help_keymaps = {
+    { key = "<CR>",  description = "Open selected note" },
+    { key = "<C-p>", description = "Switch scope to Project" },
+    { key = "<C-b>", description = "Switch scope to Branch" },
+    { key = "<C-g>", description = "Switch scope to Global" },
+    { key = "<C-e>", description = "Switch scope to All" },
+}
 
 ---@param ui DoodleUI
 local function create_previewer(ui)
@@ -105,6 +114,9 @@ local function find_notes(opts)
             map("i", "<C-p>", function() switch_scope("Project") end)
             map("i", "<C-b>", function() switch_scope("Branch") end)
             map("i", "<C-g>", function() switch_scope("Global") end)
+            map("i", "?", function()
+                Help.show("Doodle Picker Shortcuts", help_keymaps)
+            end)
             return true
         end
     }):find()

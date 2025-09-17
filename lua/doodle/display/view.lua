@@ -19,22 +19,19 @@ end
 
 ---@return integer, integer?
 function View.create_floating_window()
-    local width = math.min(math.floor(vim.o.columns * 0.8), 64)
-    local height = math.floor(vim.o.lines * 0.8)
+    local width = math.min(math.floor(vim.o.columns * 0.6), 64)
+    local height = math.floor(vim.o.lines * 0.4)
     local bufnr = vim.api.nvim_create_buf(false, true)
     local win_id = vim.api.nvim_open_win(bufnr, true, {
         relative = "editor",
-        -- title = "Doodle",
-        -- title_pos = "right",
         row = math.floor(((vim.o.lines - height) / 2) - 1),
         col = math.floor((vim.o.columns - width) / 2),
         width = width,
         height = height,
         style = "minimal",
-        border = "solid",
-        footer = "doodle",
-        footer_pos = "right"
-
+        border = "single",
+        footer_pos = "right",
+        footer = "doodle"
     })
     if win_id == 0 then
         View.close(bufnr, win_id)
@@ -45,6 +42,8 @@ function View.create_floating_window()
     vim.api.nvim_set_option_value("number", true, {
         win = win_id,
     })
+
+    vim.api.nvim_set_option_value("winbar", " %=Doodle%= ", { win = win_id })
     vim.api.nvim_set_option_value("concealcursor", "nivc", { win = win_id })
     vim.api.nvim_set_option_value("conceallevel", 2, { win = win_id })
 
@@ -91,7 +90,7 @@ function View.scope_line(current_scope)
 end
 
 ---@param blob DoodleBlob
----@param path string[] 
+---@param path string[]
 function View.metadata_line(blob, title, path)
     local virt_text = {}
 

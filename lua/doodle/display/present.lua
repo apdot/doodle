@@ -62,6 +62,26 @@ function Present.get_path(breadcrumbs)
     end, breadcrumbs)
 end
 
+---@param breadcrumbs table
+---@return string[]
+function Present.get_path_ids(breadcrumbs)
+    return vim.tbl_map(function(crumb)
+        return crumb[1]
+    end, breadcrumbs)
+end
+
+---@param path string[]
+---@param path_ids string[]
+---@return { [1]: string, [2]: string }[]
+function Present.create_breadcrumbs(path, path_ids)
+    local breadcrumbs = {}
+    for i = 1, #path do
+        table.insert(breadcrumbs, { path_ids[i], path[i] })
+    end
+
+    return breadcrumbs
+end
+
 ---@param tag_line string
 ---@return string[]
 function Present.get_tags(tag_line)

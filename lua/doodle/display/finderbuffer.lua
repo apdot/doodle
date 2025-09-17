@@ -1,7 +1,20 @@
 local Parser = require("doodle.parser")
 local DoodleBlob = require("doodle.blob")
+local Help = require("doodle.display.help")
 
 local M = {}
+
+local ns = vim.api.nvim_create_namespace("doodle_hint")
+
+local keymaps = {
+    { key = "<CR>",      description = "Open note or enter directory" },
+    { key = "-",         description = "Go up one directory" },
+    { key = "_",         description = "Go to root directory" },
+    { key = "<TAB>",     description = "Cycle scope forward" },
+    { key = "<S-TAB>",   description = "Cycle scope backward" },
+    { key = "q, <ESC>",  description = "Close doodle finder" },
+    { key = "Edit & :w", description = "Rename, move, copy, or delete items" },
+}
 
 ---@param scope integer
 ---@return integer
@@ -172,6 +185,10 @@ function M.setup(bufnr)
         ui:toggle_finder()
     end, { buffer = bufnr, silent = true })
 
+    vim.keymap.set("n", "?", function()
+        Help.show("Doodle Finder Shortcuts", keymaps)
+    end, { buffer = bufnr, silent = true })
+
     vim.api.nvim_create_autocmd({ "QuitPre" }, {
         buffer = bufnr,
         callback = function()
@@ -185,6 +202,17 @@ function M.setup(bufnr)
         group = vim.api.nvim_create_augroup("DoodleSkipIDs", { clear = true }),
         callback = skip_concealed_id,
     })
+
+    if not ui.settings.hide_hint then
+        vim.schedule(function()
+            vim.api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)
+
+            vim.api.nvim_buf_set_extmark(bufnr, ns, 0, -1, {
+                virt_text = { { "Press ? for help", "Comment" } },
+                virt_text_pos = "right_align",
+            })
+        end)
+    end
 end
 
 return M
