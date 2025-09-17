@@ -9,6 +9,7 @@ local NoteTag = require("doodle.tags.note_tag")
 ---@field title string
 ---@field status integer
 ---@field path string
+---@field path_ids string
 ---@field uuid string
 ---@field created_at integer
 ---@field updated_at integer
@@ -28,6 +29,7 @@ local columns = {
     "title",
     "status",
     "path",
+    "path_ids",
     "created_at",
     "updated_at",
     "synced_at"
@@ -45,6 +47,7 @@ function DoodleNote:new(dict)
         title = dict["title"],
         status = dict["status"],
         path = dict["path"],
+        path_ids = dict["path_ids"],
         created_at = dict["created_at"],
         updated_at = dict["updated_at"],
         synced_at = dict["synced_at"]
@@ -157,6 +160,7 @@ function DoodleNote.bulk_upsert(dict, where, db)
             note.title,
             note.status,
             note.path,
+            note.path_ids,
             note.created_at or DBUtil.now(),
             note.updated_at or DBUtil.now(),
             note.synced_at or vim.NIL

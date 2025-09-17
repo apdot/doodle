@@ -6,6 +6,7 @@ local Job = require("plenary.job")
 ---@field auto_save boolean
 ---@field sync boolean
 ---@field git_repo string
+---@field hide_hint boolean
 ---@field project fun(): string
 ---@field branch fun(): string
 ---@field global fun(): string
@@ -26,6 +27,7 @@ function DoodleConfig.get_default()
         auto_save = true,
         sync = true,
         git_repo = "/Users/anirudh/.local/share/nvim/doodle/doodle-sync",
+        hide_hint = true,
         project = function()
             return vim.fs.basename(vim.loop.cwd())
         end,

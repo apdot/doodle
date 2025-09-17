@@ -6,7 +6,7 @@ local DoodleDirectory = require("doodle.directory")
 local DoodleNote = require("doodle.note")
 local DoodleBlob = require("doodle.blob")
 local DBUtil = require("doodle.utils.db_util")
-local Tag = require("doodle.tags.tag")
+local Note = require("doodle.note")
 local NoteTag = require("doodle.tags.note_tag")
 
 ---@class DoodleFinderItem
@@ -75,6 +75,7 @@ function DoodleUI:update_finder(parsed)
     for _, line in ipairs(parsed) do
         local curr_parent = self.breadcrumbs[#self.breadcrumbs][1]
         local path = Present.get_path(self.breadcrumbs)
+        local path_ids = Present.get_path_ids(self.breadcrumbs)
         if line.uuid ~= nil then
             if line.directory ~= nil then
                 local dir = self.directories[line.uuid]
@@ -95,6 +96,7 @@ function DoodleUI:update_finder(parsed)
                 self.directories[dir.uuid] = dir
                 curr_parent = dir.uuid
                 table.insert(path, dir.name)
+                table.insert(path_ids, dir.uuid)
             elseif line.note ~= nil then
                 local note = self.notes[line.uuid]
                 if not note then
@@ -110,6 +112,7 @@ function DoodleUI:update_finder(parsed)
                 note.parent = curr_parent
                 note.status = 1
                 note.path = table.concat(path, "/")
+                note.path_ids = table.concat(path_ids, "/")
                 note.updated_at = DBUtil.now()
 
                 self.notes[note.uuid] = note
@@ -129,7 +132,8 @@ function DoodleUI:update_finder(parsed)
             end
 
             curr_parent = new_dir.uuid
-            table.insert(path, dir)
+            table.insert(path, new_dir.name)
+            table.insert(path_ids, new_dir.uuid)
         end
         if line.new_note then
             local new_note = DoodleNote.create({
@@ -137,6 +141,7 @@ function DoodleUI:update_finder(parsed)
                 branch = self.branch,
                 parent = curr_parent,
                 path = table.concat(path, "/"),
+                path_ids = table.concat(path_ids, "/"),
                 title = line.new_note
             }, self.db)
 
@@ -205,7 +210,8 @@ function DoodleUI:open_note(note_id, title)
         title = title,
         blob = blob
     }
-    local path = Present.get_path(self.breadcrumbs)
+    local note = Note.get(note_id, self.db)
+    local path = vim.split(note.path, "/")
     table.insert(path, title)
 
     local content = Present.get_note_content(blob.content,

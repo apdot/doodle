@@ -1,7 +1,17 @@
 local Present = require("doodle.display.present")
+local Note = require("doodle.note")
 local NoteTag = require("doodle.tags.note_tag")
+local Help = require("doodle.display.help")
 
 local M = {}
+
+local ns = vim.api.nvim_create_namespace("doodle_hint")
+
+local keymaps = {
+    { key = ":w",         description = "Save Note" },
+    { key = "-",          description = "Open finder at note location" },
+    { key = "<C-x><C-o>", description = "Auto-complete tags" },
+}
 
 ---@param bufnr integer
 ---@param blob DoodleBlob
@@ -12,7 +22,6 @@ local function update_tags(bufnr, blob, path, db)
     local tags = Present.get_tags(tag_line)
     print("tags i got for present")
     for k, v in pairs(tags) do
-
         print(k, v)
     end
     NoteTag.clear(blob.note_id, db)
@@ -33,7 +42,12 @@ function M.setup(bufnr, blob, path)
     local ui = require("doodle")._ui
 
     if vim.api.nvim_buf_get_name(bufnr) == "" then
-        vim.api.nvim_buf_set_name(bufnr, table.concat(path, "/") .. ".doodle")
+        local bufname = table.concat(path, "/") .. ".doodle"
+        local ok = pcall(vim.api.nvim_buf_set_name, bufnr, bufname)
+        if not ok then
+            bufname = bufname .. ":" ..blob.uuid
+            pcall(vim.api.nvim_buf_set_name, bufnr, bufname)
+        end
     end
 
     vim.api.nvim_set_option_value("buftype", "acwrite", { buf = bufnr })
@@ -77,7 +91,7 @@ function M.setup(bufnr, blob, path)
         remap = true,
         silent = true
     })
-    
+
     -- vim.api.nvim_create_autocmd({ "BufUnload" }, {
     --     buffer = bufnr,
     --     callback = function()
@@ -88,10 +102,34 @@ function M.setup(bufnr, blob, path)
     --     end
     -- })
     --
-    -- vim.keymap.set("n", "-", function()
-    --     ui:toggle_finder()
-    -- end, { buffer = bufnr, silent = true })
-    --
+
+    vim.keymap.set("n", "-", function()
+        local note = Note.get(blob.note_id, ui.db)
+        ui.breadcrumbs = Present.create_breadcrumbs(vim.split(note.path, "/"),
+            vim.split(note.path_ids, "/"))
+        print("breadcrumbs")
+        for k, v in pairs(ui.breadcrumbs) do
+            print(k, v[1], v[2])
+        end
+        ui:load_current_directory()
+        ui:toggle_finder()
+    end, { buffer = bufnr, silent = true })
+
+    vim.keymap.set("n", "?", function()
+        Help.show("Doodle Note Shortcuts", keymaps)
+    end, { buffer = bufnr, silent = true })
+
+    if not ui.settings.hide_hint then
+        vim.schedule(function()
+            vim.api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)
+
+            vim.api.nvim_buf_set_extmark(bufnr, ns, 0, -1, {
+                virt_text = { { "Press ? for help", "Comment" } },
+                virt_text_pos = "right_align",
+            })
+        end)
+    end
+
     -- vim.keymap.set("n", "_", function()
     --     if #ui.breadcrumbs > 1 then
     --         ui.breadcrumbs = { ui.breadcrumbs[1] }
