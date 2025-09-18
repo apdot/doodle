@@ -117,6 +117,19 @@ local function find_notes(opts)
             map("i", "?", function()
                 Help.show("Doodle Picker Shortcuts", help_keymaps)
             end)
+            map("i", "<C-l>", function()
+                local selection = action_state.get_selected_entry()
+                if not selection then
+                    return
+                end
+                actions.close(prompt_bufnr)
+                vim.schedule(function()
+                    local link_text = ("[%s](%s)"):format(selection.value.title,
+                        selection.value.uuid)
+                    local pos = vim.api.nvim_win_get_cursor(0)
+                    vim.api.nvim_buf_set_text(0, pos[1] - 1, pos[2], pos[1] - 1, pos[2], { link_text })
+                end)
+            end)
             return true
         end
     }):find()
