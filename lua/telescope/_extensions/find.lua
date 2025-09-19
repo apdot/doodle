@@ -18,6 +18,22 @@ local help_keymaps = {
     { key = "<C-e>", description = "Switch scope to All" },
 }
 
+local find_notes
+local find_files
+
+local function map_scope_switches(map, prompt_bufnr, opts)
+    local function switch_scope(scope)
+        actions.close(prompt_bufnr)
+        local new_opts = vim.tbl_deep_extend("force", opts or {}, { scope = scope })
+        find_notes(new_opts)
+    end
+
+    map("i", "<C-p>", function() switch_scope("Project") end)
+    map("i", "<C-b>", function() switch_scope("Branch") end)
+    map("i", "<C-g>", function() switch_scope("Global") end)
+    map("i", "<C-e>", function() switch_scope("all") end)
+end
+
 ---@param ui DoodleUI
 local function create_previewer(ui)
     return previewers.new_buffer_previewer({
@@ -66,7 +82,30 @@ local function generate_finder(notes)
     })
 end
 
-local function find_notes(opts)
+local function add_link(display_text, path)
+    local link_text = ("[%s](%s)"):format(display_text, path)
+    local pos = vim.api.nvim_win_get_cursor(0)
+    vim.api.nvim_buf_set_text(0, pos[1] - 1, pos[2], pos[1] - 1, pos[2], { link_text })
+end
+
+find_files = function(opts)
+    require("telescope.builtin").find_files({
+        attach_mappings = function(ff_prompt_bufnr, ff_map)
+            map_scope_switches(ff_map, ff_prompt_bufnr, opts)
+            ff_map("i", "<C-l>", function()
+                actions.close(ff_prompt_bufnr)
+                local selection = action_state.get_selected_entry()
+                if not selection then return end
+                vim.schedule(function()
+                    add_link(vim.fn.fnamemodify(selection.value, ":t"), selection.value)
+                end)
+            end)
+            return true
+        end
+    })
+end
+
+find_notes = function(opts)
     opts = opts or {}
     local ui = require("doodle")._ui
     if not ui.root then
@@ -94,7 +133,9 @@ local function find_notes(opts)
     if opts.scope ~= nil and opts.scope ~= "all" then
         scope_name = ("[%s]"):format(opts.scope)
     end
-    pickers.new({ previewer = previewer }, {
+
+    opts.previewer = opts.previewer or previewer
+    pickers.new(opts, {
         prompt_title = "Doodle Notes" .. (scope_name or ""),
         finder = generate_finder(notes),
         sorter = conf.generic_sorter(),
@@ -105,15 +146,7 @@ local function find_notes(opts)
                 ui:open_note(selection.value.uuid, selection.value.title)
             end)
 
-            local function switch_scope(scope)
-                actions.close(prompt_bufnr)
-                find_notes({ scope = scope })
-            end
-
-            map("i", "<C-e>", function() switch_scope("all") end)
-            map("i", "<C-p>", function() switch_scope("Project") end)
-            map("i", "<C-b>", function() switch_scope("Branch") end)
-            map("i", "<C-g>", function() switch_scope("Global") end)
+            map_scope_switches(map, prompt_bufnr, opts)
             map("i", "?", function()
                 Help.show("Doodle Picker Shortcuts", help_keymaps)
             end)
@@ -124,10 +157,13 @@ local function find_notes(opts)
                 end
                 actions.close(prompt_bufnr)
                 vim.schedule(function()
-                    local link_text = ("[%s](%s)"):format(selection.value.title,
-                        selection.value.uuid)
-                    local pos = vim.api.nvim_win_get_cursor(0)
-                    vim.api.nvim_buf_set_text(0, pos[1] - 1, pos[2], pos[1] - 1, pos[2], { link_text })
+                    add_link(selection.value.title, selection.value.uuid)
+                end)
+            end)
+            map("i", "<C-f>", function()
+                actions.close(prompt_bufnr)
+                vim.schedule(function()
+                    find_files(opts)
                 end)
             end)
             return true
@@ -135,4 +171,4 @@ local function find_notes(opts)
     }):find()
 end
 
-return find_notes
+return { find_notes = find_notes, find_files = find_files }

@@ -48,7 +48,7 @@ function Doodle:sync()
 end
 
 function Doodle.find_notes()
-    require("telescope._extensions.find_notes")()
+    require("telescope._extensions.find")()
 end
 
 local doodle = Doodle:new()
