@@ -6,6 +6,7 @@ end
 
 return telescope.register_extension({
     exports = {
-        find_notes = require("telescope._extensions.find_notes")
+        find_notes = require("telescope._extensions.find").find_notes,
+        find_files = require("telescope._extensions.find").find_files,
     }
 })

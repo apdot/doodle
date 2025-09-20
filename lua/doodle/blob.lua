@@ -38,6 +38,19 @@ function DoodleBlob:new(dict)
     }, self)
 end
 
+---@param dict table
+---@param db DoodleDB
+---@return DoodleBlob
+function DoodleBlob.create(dict, db)
+    local blob = DoodleBlob:new(dict)
+    print("blobl values", blob.note_id, blob.content)
+
+    local uuid = db:create_blob(blob)
+    blob.uuid = uuid
+
+    return blob
+end
+
 ---@param note_id string
 ---@param db DoodleDB
 ---@return DoodleBlob
@@ -132,6 +145,7 @@ function DoodleBlob:save(db)
     if self.uuid then
         db:update_blob(self)
     else
+        print(self.note_id, self.content)
         db:create_blob(self)
     end
 end

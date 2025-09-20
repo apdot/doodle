@@ -55,8 +55,12 @@ function View.create_window()
     if vim.api.nvim_win_get_config(0).relative ~= "" then
         vim.cmd("wincmd p") -- jump back to last non-floating window
     end
+
     local win_id = vim.api.nvim_get_current_win()
     vim.api.nvim_win_set_buf(win_id, bufnr)
+    vim.api.nvim_set_option_value("concealcursor", "nivc", { win = win_id })
+    vim.api.nvim_set_option_value("conceallevel", 2, { win = win_id })
+
     return bufnr, win_id
 end
 
