@@ -150,6 +150,18 @@ function DoodleDB:load_finder(parent)
     return DoodleNote.from_list(notes) or {}, DoodleDirectory.from_list(directories) or {}
 end
 
+---@param table_name string
+---@return table
+function DoodleDB:get_all(table_name)
+    local res = self._conn:select(table_name)
+
+    if not res or #res == 0 then
+        return {}
+    end
+
+    return res
+end
+
 ---@param blob DoodleBlob
 ---@return string
 function DoodleDB:create_blob(blob)
@@ -164,18 +176,6 @@ function DoodleDB:create_blob(blob)
     self._conn:insert("blob", dict)
 
     return dict.uuid
-end
-
----@param table_name string
----@return table
-function DoodleDB:get_all(table_name)
-    local res = self._conn:select(table_name)
-
-    if not res or #res == 0 then
-        return {}
-    end
-
-    return res
 end
 
 ---@param note_id string

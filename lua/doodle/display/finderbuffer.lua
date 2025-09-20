@@ -149,8 +149,7 @@ function M.setup(bufnr)
             ui:update_finder(parsed)
             ui:save()
         end
-        ui:prepare_root()
-        ui:load_current_directory()
+        ui:init()
         ui:render_finder()
     end, { buffer = bufnr, silent = true })
 
@@ -162,8 +161,7 @@ function M.setup(bufnr)
             ui:update_finder(parsed)
             ui:save()
         end
-        ui:prepare_root()
-        ui:load_current_directory()
+        ui:init()
         ui:render_finder()
     end, { buffer = bufnr, silent = true })
 

@@ -16,6 +16,7 @@ local help_keymaps = {
     { key = "<C-b>", description = "Switch scope to Branch" },
     { key = "<C-g>", description = "Switch scope to Global" },
     { key = "<C-e>", description = "Switch scope to All" },
+    { key = "<C-f>", description = "Switch to find files" },
 }
 
 local find_notes
@@ -108,10 +109,7 @@ end
 find_notes = function(opts)
     opts = opts or {}
     local ui = require("doodle")._ui
-    if not ui.root then
-        ui:prepare_root()
-        ui:load_current_directory()
-    end
+    ui:init()
 
     local where = {}
     if opts.scope == "Project" then

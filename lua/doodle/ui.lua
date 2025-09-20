@@ -236,6 +236,13 @@ function DoodleUI:close_note(bufnr)
     self.open_notes[bufnr] = nil
 end
 
+function DoodleUI:init()
+    if not self.root then
+        self:prepare_root()
+        self:load_current_directory()
+    end
+end
+
 function DoodleUI:toggle_finder()
     print("win id in tf", self.win_id)
     if self.win_id ~= nil then
@@ -252,11 +259,52 @@ function DoodleUI:toggle_finder()
         return
     end
 
-    if not self.root then
-        self:prepare_root()
-        self:load_current_directory()
-    end
+    self:init()
     self:render_finder()
+end
+
+function DoodleUI:here()
+    self:init()
+
+    local file_path = vim.api.nvim_buf_get_name(0)
+    if file_path == "" then
+        return
+    end
+
+    local line_num = vim.api.nvim_win_get_cursor(0)[1]
+    local filename = vim.fn.fnamemodify(file_path, ":t")
+    local display_text = string.format("%s:%d", filename, line_num)
+    local link_target = string.format("%s:%d", file_path, line_num)
+    local link_string = string.format("[%s](%s)", display_text, link_target)
+
+    local note = DoodleNote.create({
+        project = self.root,
+        path = self.root,
+        path_ids = self.breadcrumbs[1][1],
+        parent = self.breadcrumbs[1][1],
+        title = display_text,
+    }, self.db)
+
+    local content = {}
+    table.insert(content, "")
+    table.insert(content, "# Source " .. link_string)
+    local line_content = vim.api.nvim_buf_get_lines(0, line_num - 1, line_num, false)[1] or ""
+    local filetype = vim.bo[0].filetype
+    if vim.fn.trim(line_content) ~= "" then
+        table.insert(content, "")
+        table.insert(content, "# Context")
+        table.insert(content, "```" .. filetype)
+        table.insert(content, line_content)
+        table.insert(content, "```")
+    end
+    table.insert(content, "---")
+
+    DoodleBlob.create({
+        note_id = note.uuid,
+        content = table.concat(content, "\n")
+    }, self.db)
+
+    self:open_note(note.uuid, note.title)
 end
 
 return DoodleUI
