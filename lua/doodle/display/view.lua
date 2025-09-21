@@ -6,7 +6,7 @@ local scopes = { "Project", "Branch", "Global" }
 local ns = vim.api.nvim_create_namespace("doodle_ns")
 
 ---@param bufnr integer
----@param win_id integer
+---@param win_id integer?
 function View.close(bufnr, win_id)
     if bufnr ~= nil and vim.api.nvim_buf_is_valid(bufnr) then
         vim.api.nvim_buf_delete(bufnr, { force = true })
@@ -17,10 +17,12 @@ function View.close(bufnr, win_id)
     end
 end
 
+---@param height number
+---@param width number
 ---@return integer, integer?
-function View.create_floating_window()
-    local width = math.min(math.floor(vim.o.columns * 0.6), 64)
-    local height = math.floor(vim.o.lines * 0.4)
+function View.create_floating_window(height, width)
+    local width = math.min(math.floor(vim.o.columns * width), 64)
+    local height = math.floor(vim.o.lines * height)
     local bufnr = vim.api.nvim_create_buf(false, true)
     local win_id = vim.api.nvim_open_win(bufnr, true, {
         relative = "editor",

@@ -73,6 +73,7 @@ function M.setup(bufnr, blob, path)
     vim.api.nvim_create_autocmd({ "BufLeave" }, {
         buffer = bufnr,
         callback = function(args)
+            print("in bufleave")
             local is_modified = vim.api.nvim_get_option_value("modified", { buf = args.buf })
             if ui.settings.auto_save and is_modified then
                 vim.api.nvim_buf_call(args.buf, function()
@@ -92,16 +93,15 @@ function M.setup(bufnr, blob, path)
         silent = true
     })
 
-    -- vim.api.nvim_create_autocmd({ "BufUnload" }, {
-    --     buffer = bufnr,
-    --     callback = function()
-    --         print("bufdelete closing note")
-    --         vim.schedule(function()
-    --             ui:close_note(bufnr)
-    --         end)
-    --     end
-    -- })
-    --
+    vim.api.nvim_create_autocmd({ "BufUnload" }, {
+        buffer = bufnr,
+        callback = function()
+            print("bufdelete closing note")
+            -- vim.schedule(function()
+                ui:close_note(bufnr)
+            -- end)
+        end
+    })
 
     vim.keymap.set("n", "-", function()
         local note = Note.get(blob.note_id, ui.db)
@@ -153,7 +153,7 @@ function M.setup(bufnr, blob, path)
                         vim.api.nvim_win_set_cursor(0, { 1, 0 })
                     end
                 else
-                    ui:open_note(dest, text)
+                    ui:open_note(dest)
                 end
 
                 link_found = true

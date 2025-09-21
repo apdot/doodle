@@ -110,7 +110,7 @@ function M.setup(bufnr)
             print("toggle finder CR")
             ui:toggle_finder()
             vim.schedule(function()
-                ui:open_note(parsed_line.uuid, parsed_line.note)
+                ui:open_note(parsed_line.uuid)
             end)
         end
     end, { buffer = bufnr, silent = true })

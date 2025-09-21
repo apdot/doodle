@@ -19,6 +19,8 @@ local NoteTag = require("doodle.tags.note_tag")
 ---@class DoodleUI
 ---@field win_id integer
 ---@field bufnr integer
+---@field link_win_id integer
+---@field link_bufnr integer
 ---@field open_notes table<integer, { win_id: integer, title: string, blob: DoodleBlob }>
 ---@field current_scope integer
 ---@field root string
@@ -181,17 +183,23 @@ function DoodleUI:prepare_root()
     self.breadcrumbs = { { dir_uuid, self.root } }
 end
 
-function DoodleUI:render_finder()
-    local content = Present.get_finder_content(self.notes, self.directories)
-    local bufnr, win_id = self.bufnr, self.win_id
+function DoodleUI:render_note(note, blob, bufnr, win_id)
+    local path = vim.split(note.path, "/")
+    table.insert(path, note.title)
 
-    View.render(bufnr, win_id, content, View.scope_line(self.current_scope),
-        Present.get_path(self.breadcrumbs))
+    local content = Present.get_note_content(blob.content,
+        NoteTag.get_for_note(note.uuid, self.db))
+
+    View.render(bufnr, win_id, content,
+        View.metadata_line(blob, note.title, path), path)
+
+    NoteBuffer.setup(bufnr, blob, path)
+
+    vim.api.nvim_set_option_value("modified", false, { buf = bufnr })
 end
 
 ---@param note_id string
----@param title string
-function DoodleUI:open_note(note_id, title)
+function DoodleUI:open_note(note_id)
     print("note id", note_id)
     for bufnr, note_info in pairs(self.open_notes) do
         if note_info.blob.note_id == note_id and vim.api.nvim_win_is_valid(note_info.win_id) then
@@ -205,24 +213,15 @@ function DoodleUI:open_note(note_id, title)
 
     local blob = DoodleBlob.get(note_id, self.db)
     local bufnr, win_id = View.create_window()
+    local note = Note.get(note_id, self.db)
+
     self.open_notes[bufnr] = {
         win_id = win_id,
-        title = title,
+        title = note.title,
         blob = blob
     }
-    local note = Note.get(note_id, self.db)
-    local path = vim.split(note.path, "/")
-    table.insert(path, title)
 
-    local content = Present.get_note_content(blob.content,
-        NoteTag.get_for_note(note_id, self.db))
-
-    View.render(bufnr, win_id, content,
-        View.metadata_line(blob, title, path), path)
-
-    NoteBuffer.setup(bufnr, blob, path)
-
-    vim.api.nvim_set_option_value("modified", false, { buf = bufnr })
+    self:render_note(note, blob, bufnr, win_id)
 end
 
 ---@param bufnr integer
@@ -232,15 +231,22 @@ function DoodleUI:close_note(bufnr)
         return
     end
     print("closing notes")
-    View.close(bufnr, self.open_notes[bufnr].win_id)
     self.open_notes[bufnr] = nil
 end
 
 function DoodleUI:init()
-    if not self.root then
-        self:prepare_root()
-        self:load_current_directory()
-    end
+    self:prepare_root()
+    self:load_current_directory()
+end
+
+function DoodleUI:render_finder()
+    local content = Present.get_finder_content(self.notes, self.directories)
+    local bufnr, win_id = self.bufnr, self.win_id
+
+    View.render(bufnr, win_id, content, View.scope_line(self.current_scope),
+        Present.get_path(self.breadcrumbs))
+
+    FinderBuffer.setup(self.bufnr)
 end
 
 function DoodleUI:toggle_finder()
@@ -251,20 +257,24 @@ function DoodleUI:toggle_finder()
         self.bufnr, self.win_id = nil, nil
         return
     end
-    self.bufnr, self.win_id = View.create_floating_window()
+    self.bufnr, self.win_id = View.create_floating_window(0.4, 0.6)
 
-    FinderBuffer.setup(self.bufnr)
 
     if not self.win_id then
         return
     end
 
-    self:init()
+    if not self.root then
+        self:init()
+    end
+
     self:render_finder()
 end
 
 function DoodleUI:here()
-    self:init()
+    if not self.root then
+        self:init()
+    end
 
     local file_path = vim.api.nvim_buf_get_name(0)
     if file_path == "" then
@@ -304,7 +314,7 @@ function DoodleUI:here()
         content = table.concat(content, "\n")
     }, self.db)
 
-    self:open_note(note.uuid, note.title)
+    self:open_note(note.uuid)
 end
 
 return DoodleUI

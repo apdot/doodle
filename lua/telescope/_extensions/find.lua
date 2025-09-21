@@ -109,7 +109,10 @@ end
 find_notes = function(opts)
     opts = opts or {}
     local ui = require("doodle")._ui
-    ui:init()
+
+    if not ui.root then
+        ui:init()
+    end
 
     local where = {}
     if opts.scope == "Project" then
@@ -141,7 +144,7 @@ find_notes = function(opts)
             actions.select_default:replace(function()
                 actions.close(prompt_bufnr)
                 local selection = action_state.get_selected_entry()
-                ui:open_note(selection.value.uuid, selection.value.title)
+                ui:open_note(selection.value.uuid)
             end)
 
             map_scope_switches(map, prompt_bufnr, opts)
