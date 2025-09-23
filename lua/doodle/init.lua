@@ -38,6 +38,10 @@ function Doodle:toggle_finder()
     self._ui:toggle_finder()
 end
 
+function Doodle:toggle_links()
+    self._ui:toggle_links()
+end
+
 function Doodle:sync()
     if self.config.settings.sync then
         self:save()
@@ -92,6 +96,22 @@ function Doodle.setup(self, partial_config)
         "DoodleHere",
         function()
             doodle:here()
+        end,
+        { nargs = 0 }
+    )
+
+    vim.api.nvim_create_user_command(
+        "DoodleFinder",
+        function()
+            doodle:toggle_finder()
+        end,
+        { nargs = 0 }
+    )
+
+    vim.api.nvim_create_user_command(
+        "DoodleLinks",
+        function()
+            doodle:toggle_links()
         end,
         { nargs = 0 }
     )

@@ -6,6 +6,16 @@ local scopes = { "Project", "Branch", "Global" }
 local ns = vim.api.nvim_create_namespace("doodle_ns")
 
 ---@param bufnr integer
+---@param win_id integer
+---@param line integer
+function View.place_cursor(bufnr, win_id, line)
+    local line_count = vim.api.nvim_buf_line_count(bufnr)
+    if line_count >= line then
+        vim.api.nvim_win_set_cursor(win_id, { line, 0 })
+    end
+end
+
+---@param bufnr integer
 ---@param win_id integer?
 function View.close(bufnr, win_id)
     if bufnr ~= nil and vim.api.nvim_buf_is_valid(bufnr) then
@@ -17,12 +27,12 @@ function View.close(bufnr, win_id)
     end
 end
 
----@param height number
----@param width number
+---@param height_factor number
+---@param width_factor number
 ---@return integer, integer?
-function View.create_floating_window(height, width)
-    local width = math.min(math.floor(vim.o.columns * width), 64)
-    local height = math.floor(vim.o.lines * height)
+function View.create_finder_window(height_factor, width_factor)
+    local width = math.min(math.floor(vim.o.columns * width_factor), 64)
+    local height = math.floor(vim.o.lines * height_factor)
     local bufnr = vim.api.nvim_create_buf(false, true)
     local win_id = vim.api.nvim_open_win(bufnr, true, {
         relative = "editor",
@@ -37,7 +47,7 @@ function View.create_floating_window(height, width)
     })
     if win_id == 0 then
         View.close(bufnr, win_id)
-        error("Failed to open note")
+        error("Failed to open finder")
         return bufnr, nil
     end
 
@@ -45,11 +55,40 @@ function View.create_floating_window(height, width)
         win = win_id,
     })
 
+    vim.api.nvim_set_option_value("cursorline", true, { win = win_id })
     vim.api.nvim_set_option_value("winbar", " %=Doodle%= ", { win = win_id })
     vim.api.nvim_set_option_value("concealcursor", "nivc", { win = win_id })
     vim.api.nvim_set_option_value("conceallevel", 2, { win = win_id })
 
     return bufnr, win_id
+end
+
+---@return { left: integer, right: integer }, { left: integer, right: integer }
+function View.create_links_window()
+    local right_buf, right_win = View.create_window()
+
+    vim.api.nvim_set_current_win(right_win)
+    vim.cmd("vsplit")
+    local left_win = vim.api.nvim_get_current_win()
+    local left_buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_win_set_buf(left_win, left_buf)
+
+    local total_width = vim.api.nvim_win_get_width(left_win) + vim.api.nvim_win_get_width(right_win)
+    vim.api.nvim_win_set_width(left_win, math.floor(total_width / 3))
+
+    for _, buf in pairs({ left_buf, right_buf }) do
+        vim.api.nvim_set_option_value("buftype", "nofile", { buf = buf })
+        vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
+    end
+
+    vim.api.nvim_set_option_value("cursorline", true, { win = left_win })
+
+    for _, win in pairs({ left_win, right_win }) do
+        vim.api.nvim_set_option_value("concealcursor", "nivc", { win = win })
+        vim.api.nvim_set_option_value("conceallevel", 2, { win = win })
+    end
+
+    return { left = left_buf, right = right_buf }, { left = left_win, right = right_win }
 end
 
 function View.create_window()
@@ -121,6 +160,15 @@ function View.metadata_line(blob, title, path)
     return virt_text
 end
 
+function View.links_left_header()
+    return { { " Notes", "Keyword" } }
+end
+
+---@param title string
+function View.links_right_header(title)
+    return { { (" Links: %s"):format(title), "Type" } }
+end
+
 ---@param bufnr integer
 ---@param win integer
 ---@param lnum integer
@@ -163,9 +211,6 @@ function View.render(bufnr, win_id, content, header, path)
     render_content(bufnr, content)
     render_header(bufnr, win_id, header)
     render_breadcrumbs(win_id, path)
-    --    if not note then
-    -- vim.api.nvim_set_option_value("modifiable", false, { buf = self.bufnr })
-    --    end
 end
 
 return View

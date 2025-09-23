@@ -61,7 +61,7 @@ end
 ---@param db DoodleDB
 ---@return NoteTag[]
 function NoteTag.get_all(db)
-    local note_tags = db:get_all(table_name)
+    local note_tags = db:get_all(table_name, "created_at")
 
     return NoteTag.from_list(note_tags)
 end

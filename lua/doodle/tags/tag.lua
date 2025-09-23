@@ -96,7 +96,7 @@ end
 ---@param db DoodleDB
 ---@return Tag[]
 function Tag.get_all(db)
-    local tags = db:get_all(table_name)
+    local tags = db:get_all(table_name, "name")
 
     return Tag.from_list(tags)
 end

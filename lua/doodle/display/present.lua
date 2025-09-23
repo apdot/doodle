@@ -49,7 +49,9 @@ function Present.get_note_content(blob_content, tags)
     local display = {}
     table.insert(display, "")
     table.insert(display, Present.create_tags(tags))
-    vim.list_extend(display, vim.split(blob_content, "\n", { plain = true }))
+    if blob_content then
+        vim.list_extend(display, vim.split(blob_content, "\n", { plain = true }))
+    end
 
     return display
 end
@@ -93,6 +95,74 @@ function Present.get_tags(tag_line)
     end
 
     return tags
+end
+
+---@param labels string[]
+---@return string[]
+function Present.get_labels(labels)
+    local icon = " "
+    local display = {}
+
+    table.insert(display, "")
+
+    for _, label in pairs(labels) do
+        table.insert(display, icon .. label)
+    end
+
+    return display
+end
+
+local function format_time_ago(timestamp)
+    if not timestamp or type(timestamp) ~= "number" then
+        return ""
+    end
+
+    local now = os.time()
+    local diff_seconds = now - timestamp
+    local time_str
+    if diff_seconds < 60 then
+        time_str = diff_seconds .. "s ago"
+    elseif diff_seconds < 3600 then
+        time_str = math.floor(diff_seconds / 60) .. "m ago"
+    elseif diff_seconds < 86400 then
+        time_str = math.floor(diff_seconds / 3600) .. "h ago"
+    else
+        time_str = math.floor(diff_seconds / 86400) .. "d ago"
+    end
+
+    return ("(%s)"):format(time_str)
+end
+
+---@param adjacency table
+---@return string[]
+function Present.get_links(adjacency)
+    local display = {}
+    table.insert(display, "")
+
+    table.insert(display, "# Outgoing: ()")
+    local outgoing = adjacency.outgoing
+    if outgoing and #outgoing > 0 then
+        for _, note_data in pairs(outgoing) do
+            table.insert(display, ("  - %s/%s %s"):format(note_data.note.path,
+                note_data.link.link_str:sub(2, -2), format_time_ago(note_data.link.created_at)))
+        end
+    else
+        table.insert(display, "")
+    end
+
+    table.insert(display, "# Incoming: ()")
+    local incoming = adjacency.incoming
+    if incoming and #incoming > 0 then
+        for _, note_data in pairs(incoming) do
+            table.insert(display, ("  - %s/%s %s"):format(note_data.note.path,
+                note_data.link.link_str:sub(2, -2), format_time_ago(note_data.link.created_at)))
+        end
+    else
+        table.insert(display, "")
+    end
+
+
+    return display
 end
 
 return Present

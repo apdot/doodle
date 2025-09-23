@@ -7,6 +7,7 @@ local previewers = require("telescope.previewers")
 local DoodleNote = require("doodle.note")
 local DoodleBlob = require("doodle.blob")
 local Help = require("doodle.display.help")
+local Link = require("doodle.link")
 
 local preview_cache = {}
 
@@ -17,6 +18,7 @@ local help_keymaps = {
     { key = "<C-g>", description = "Switch scope to Global" },
     { key = "<C-e>", description = "Switch scope to All" },
     { key = "<C-f>", description = "Switch to find files" },
+    { key = "<C-l>", description = "Add link to the selected note" },
 }
 
 local find_notes
@@ -83,10 +85,28 @@ local function generate_finder(notes)
     })
 end
 
-local function add_link(display_text, path)
+---@param display_text string
+---@param path string
+---@param to_note boolean
+local function add_link(display_text, path, to_note)
+    local ui = require("doodle")._ui
+
     local link_text = ("[%s](%s)"):format(display_text, path)
     local pos = vim.api.nvim_win_get_cursor(0)
     vim.api.nvim_buf_set_text(0, pos[1] - 1, pos[2], pos[1] - 1, pos[2], { link_text })
+
+    local bufnr = vim.api.nvim_get_current_buf()
+    local note_info = ui.open_notes and ui.open_notes[bufnr]
+    if note_info and note_info.id then
+        print("creating llink")
+        print(note_info.id, path)
+        Link.create({
+            src = note_info.id,
+            dest = path,
+            link_str = link_text,
+            to_note = to_note
+        }, ui.db)
+    end
 end
 
 find_files = function(opts)
@@ -98,7 +118,7 @@ find_files = function(opts)
                 local selection = action_state.get_selected_entry()
                 if not selection then return end
                 vim.schedule(function()
-                    add_link(vim.fn.fnamemodify(selection.value, ":t"), selection.value)
+                    add_link(vim.fn.fnamemodify(selection.value, ":t"), selection.value, false)
                 end)
             end)
             return true
@@ -158,7 +178,7 @@ find_notes = function(opts)
                 end
                 actions.close(prompt_bufnr)
                 vim.schedule(function()
-                    add_link(selection.value.title, selection.value.uuid)
+                    add_link(selection.value.title, selection.value.uuid, true)
                 end)
             end)
             map("i", "<C-f>", function()

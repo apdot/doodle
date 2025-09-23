@@ -1,6 +1,7 @@
 local View = require("doodle.display.view")
 local FinderBuffer = require("doodle.display.finderbuffer")
 local NoteBuffer = require("doodle.display.notebuffer")
+local LinkBuffer = require("doodle.display.linkbuffer")
 local Present = require("doodle.display.present")
 local DoodleDirectory = require("doodle.directory")
 local DoodleNote = require("doodle.note")
@@ -8,6 +9,7 @@ local DoodleBlob = require("doodle.blob")
 local DBUtil = require("doodle.utils.db_util")
 local Note = require("doodle.note")
 local NoteTag = require("doodle.tags.note_tag")
+local Graph = require("doodle.graph")
 
 ---@class DoodleFinderItem
 ---@field uuid string
@@ -19,9 +21,11 @@ local NoteTag = require("doodle.tags.note_tag")
 ---@class DoodleUI
 ---@field win_id integer
 ---@field bufnr integer
----@field link_win_id integer
----@field link_bufnr integer
----@field open_notes table<integer, { win_id: integer, title: string, blob: DoodleBlob }>
+---@field link_win_id { left: integer, right: integer }
+---@field link_bufnr {left: integer, right: integer }
+---@field link_idx integer
+---@field graph table
+---@field open_notes table<integer, { win_id: integer, title: string, id: string, blob: DoodleBlob }>
 ---@field current_scope integer
 ---@field root string
 ---@field branch string
@@ -183,6 +187,11 @@ function DoodleUI:prepare_root()
     self.breadcrumbs = { { dir_uuid, self.root } }
 end
 
+function DoodleUI:init()
+    self:prepare_root()
+    self:load_current_directory()
+end
+
 function DoodleUI:render_note(note, blob, bufnr, win_id)
     local path = vim.split(note.path, "/")
     table.insert(path, note.title)
@@ -196,18 +205,22 @@ function DoodleUI:render_note(note, blob, bufnr, win_id)
     NoteBuffer.setup(bufnr, blob, path)
 
     vim.api.nvim_set_option_value("modified", false, { buf = bufnr })
+
+    View.place_cursor(bufnr, win_id, 4)
 end
 
 ---@param note_id string
 function DoodleUI:open_note(note_id)
     print("note id", note_id)
-    for bufnr, note_info in pairs(self.open_notes) do
-        if note_info.blob.note_id == note_id and vim.api.nvim_win_is_valid(note_info.win_id) then
-            print("existing note")
-            vim.schedule(function()
-                vim.api.nvim_win_set_buf(note_info.win_id, bufnr)
-            end)
-            return
+    if self.open_notes and #self.open_notes > 0 then
+        for bufnr, note_info in pairs(self.open_notes) do
+            if note_info.blob.note_id == note_id and vim.api.nvim_win_is_valid(note_info.win_id) then
+                print("existing note")
+                vim.schedule(function()
+                    vim.api.nvim_win_set_buf(note_info.win_id, bufnr)
+                end)
+                return
+            end
         end
     end
 
@@ -215,9 +228,11 @@ function DoodleUI:open_note(note_id)
     local bufnr, win_id = View.create_window()
     local note = Note.get(note_id, self.db)
 
+    print("open note bufnr for todo", bufnr)
     self.open_notes[bufnr] = {
         win_id = win_id,
         title = note.title,
+        id = note.uuid,
         blob = blob
     }
 
@@ -234,11 +249,6 @@ function DoodleUI:close_note(bufnr)
     self.open_notes[bufnr] = nil
 end
 
-function DoodleUI:init()
-    self:prepare_root()
-    self:load_current_directory()
-end
-
 function DoodleUI:render_finder()
     local content = Present.get_finder_content(self.notes, self.directories)
     local bufnr, win_id = self.bufnr, self.win_id
@@ -247,6 +257,8 @@ function DoodleUI:render_finder()
         Present.get_path(self.breadcrumbs))
 
     FinderBuffer.setup(self.bufnr)
+
+    View.place_cursor(self.bufnr, self.win_id, 3)
 end
 
 function DoodleUI:toggle_finder()
@@ -257,10 +269,99 @@ function DoodleUI:toggle_finder()
         self.bufnr, self.win_id = nil, nil
         return
     end
-    self.bufnr, self.win_id = View.create_floating_window(0.4, 0.6)
 
+    local bufnr, win_id = View.create_finder_window(0.4, 0.5)
 
-    if not self.win_id then
+    if not win_id then
+        return
+    end
+
+    self.bufnr = bufnr
+    self.win_id = win_id
+
+    if not self.root then
+        self:init()
+    end
+
+    self:render_finder()
+end
+
+function DoodleUI:render_links_refresh()
+    print("link_id", self.link_idx)
+    local selected_note = self.graph.notes[self.link_idx]
+    local current_win = vim.api.nvim_get_current_win()
+
+    print("current_win", current_win)
+    print("right win", self.link_win_id.right)
+    print("left win", self.link_win_id.left)
+    vim.api.nvim_win_set_buf(self.link_win_id.right, self.link_bufnr.right)
+    -- if  current_win ~= self.link_bufnr.right then
+    --     vim.api.nvim_win_set_buf(current_win, self.link_bufnr.right)
+    --     self.link_win_id.right = current_win
+    -- end
+    View.render(self.link_bufnr.right, self.link_win_id.right,
+        Present.get_links(self.graph.adjacency[selected_note.uuid]),
+        View.links_right_header(selected_note.title), { "Links" })
+end
+
+---@param bufnr integer
+function DoodleUI:render_links(bufnr)
+    -- local content = Present.get_links_content(self.notes, self.directories)
+    -- local bufnr, win_id = self.bufnr, self.win_id
+
+    if not self.graph then
+        self.graph = Graph.build(self.db)
+
+        if self.open_notes then
+            print("link open note, bufnr", bufnr)
+            local open_note = self.open_notes[bufnr]
+            print("link open", open_note)
+            if open_note then
+                print("idx", self.graph.note_idx[open_note.id])
+                self.link_idx = self.graph.note_idx[open_note.id]
+            end
+        end
+
+        if not self.link_idx then
+            self.link_idx = 1
+        end
+    end
+
+    -- for k, v in pairs(graph.adjacency) do
+    --     print("note id", k)
+    --     for _, note_data in pairs(v.outgoing) do
+    --         print("outgoing ", note_data.note.title, note_data.link.link_str)
+    --     end
+    --     for _, note_data in pairs(v.incoming) do
+    --         print("incoming ", note_data.note.title, note_data.link.link_str)
+    --     end
+    -- end
+
+    View.render(self.link_bufnr.left, self.link_win_id.left,
+        Present.get_labels(self.graph.labels), View.links_left_header(),
+        { "Links" })
+
+    self:render_links_refresh()
+
+    LinkBuffer.setup_left(self.link_bufnr.left)
+    LinkBuffer.setup_right(self.link_bufnr.right)
+
+    View.place_cursor(self.link_bufnr.left, self.link_win_id.left, self.link_idx + 2)
+
+    -- FinderBuffer.setup(self.bufnr)
+end
+
+function DoodleUI:toggle_links()
+    -- if self.link_win_id ~= nil then
+    --     View.close(self.link_bufnr.left, self.link_win_id.left)
+    --     View.close(self.link_bufnr.right, self.link_win_id.right)
+    --     self.link_bufnr, self.link_win_id = nil, nil
+    --     return
+    -- end
+    local current_bufnr = vim.api.nvim_get_current_buf()
+    self.link_bufnr, self.link_win_id = View.create_links_window()
+
+    if not self.link_win_id then
         return
     end
 
@@ -268,7 +369,7 @@ function DoodleUI:toggle_finder()
         self:init()
     end
 
-    self:render_finder()
+    self:render_links(current_bufnr)
 end
 
 function DoodleUI:here()
