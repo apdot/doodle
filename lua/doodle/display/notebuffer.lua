@@ -96,10 +96,7 @@ function M.setup(bufnr, blob, path)
         local note = Note.get(blob.note_id, ui.db)
         ui.breadcrumbs = Present.create_breadcrumbs(vim.split(note.path, "/"),
             vim.split(note.path_ids, "/"))
-        print("breadcrumbs")
-        for k, v in pairs(ui.breadcrumbs) do
-            print(k, v[1], v[2])
-        end
+        ui.current_scope = note:get_scope(ui.settings)
         ui:load_current_directory()
         ui:toggle_finder()
     end, { buffer = bufnr, silent = true })

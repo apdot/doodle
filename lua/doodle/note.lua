@@ -131,6 +131,16 @@ function DoodleNote.get_all_with_tags(db, dict)
     return db:get_all_notes_with_tags(where)
 end
 
+---@param settings DoodleSettings
+function DoodleNote:get_scope(settings)
+    if self.project == settings.global() then
+        return 3
+    elseif self.branch ~= nil then
+        return 2
+    end
+    return 1
+end
+
 ---@param dict table
 ---@param now integer
 ---@param db DoodleDB
