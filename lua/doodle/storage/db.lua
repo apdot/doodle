@@ -107,11 +107,27 @@ function DoodleDB:ensure_schema()
         );
     ]]
 
+    local create_link_sql = [[
+        CREATE TABLE IF NOT EXISTS link (
+            id         INTEGER PRIMARY KEY,
+            uuid       TEXT UNIQUE,
+            src        TEXT,
+            dest       TEXT,
+            link_str   TEXT,
+            to_note    BOOLEAN,
+            created_at INTEGER,
+            updated_at INTEGER,
+            synced_at  INTEGER,
+            status     INTEGER DEFAULT 1
+        );
+    ]]
+
     self._conn:eval(create_note_sql)
     self._conn:eval(create_directory_sql)
     self._conn:eval(create_blob_sql)
     self._conn:eval(create_tag_sql)
     self._conn:eval(create_note_tag_sql)
+    self._conn:eval(create_link_sql)
 end
 
 function DoodleDB:setup()
@@ -151,9 +167,12 @@ function DoodleDB:load_finder(parent)
 end
 
 ---@param table_name string
+---@param field string
 ---@return table
-function DoodleDB:get_all(table_name)
-    local res = self._conn:select(table_name)
+function DoodleDB:get_all(table_name, field)
+    local res = self._conn:select(table_name, {
+        order_by = { asc = field }
+    })
 
     if not res or #res == 0 then
         return {}
@@ -165,17 +184,21 @@ end
 ---@param blob DoodleBlob
 ---@return string
 function DoodleDB:create_blob(blob)
-    local dict = DBUtil.dict({
+    local sql = [[
+    INSERT INTO blob (uuid, note_id, content, created_at, updated_at)
+    VALUES (:uuid, :note_id, :content, :created_at, :updated_at);
+    ]]
+
+    local uuid = blob.uuid and blob.uuid or SyncUtil.uuid()
+    self._conn:eval(sql, DBUtil.dict({
+        uuid = uuid,
         note_id = blob.note_id,
         content = blob.content,
-        uuid = blob.uuid and blob.uuid or SyncUtil.uuid(),
         created_at = DBUtil.now(),
-        updated_at = DBUtil.now()
-    })
+        updated_at = DBUtil.now(),
+    }))
 
-    self._conn:insert("blob", dict)
-
-    return dict.uuid
+    return uuid
 end
 
 ---@param note_id string
@@ -217,27 +240,31 @@ function DoodleDB:update_blob(blob)
             content = blob.content,
             updated_at = DBUtil.now()
         })
-    })
+   })
 end
 
 ---@param note DoodleNote
 ---@return string
 function DoodleDB:create_note(note)
-    local dict = DBUtil.dict({
+    local sql = [[
+    INSERT INTO note (uuid, project, branch, title, parent, path, path_ids, created_at, updated_at)
+    VALUES (:uuid, :project, :branch, :title, :parent, :path, :path_ids, :created_at, :updated_at);
+    ]]
+
+    local uuid = note.uuid and note.uuid or SyncUtil.uuid()
+    self._conn:eval(sql, DBUtil.dict({
+        uuid = uuid,
         project = note.project,
         branch = note.branch,
         title = note.title,
         parent = note.parent,
         path = note.path,
         path_ids = note.path_ids,
-        uuid = note.uuid and note.uuid or SyncUtil.uuid(),
         created_at = DBUtil.now(),
-        updated_at = DBUtil.now()
-    })
+        updated_at = DBUtil.now(),
+    }))
 
-    self._conn:insert("note", dict)
-
-    return dict.uuid
+    return uuid
 end
 
 ---@param uuid string
@@ -336,19 +363,23 @@ end
 ---@param directory DoodleDirectory
 ---@return string
 function DoodleDB:create_directory(directory)
-    local dict = DBUtil.dict({
+    local sql = [[
+    INSERT INTO directory (uuid, project, branch, parent, name, created_at, updated_at)
+    VALUES (:uuid, :project, :branch, :parent, :name, :created_at, :updated_at);
+    ]]
+
+    local uuid = directory.uuid and directory.uuid or SyncUtil.uuid()
+    self._conn:eval(sql, DBUtil.dict({
+        uuid = uuid,
         project = directory.project,
         branch = directory.branch,
         parent = directory.parent,
         name = directory.name,
-        uuid = directory.uuid and directory.uuid or SyncUtil.uuid(),
         created_at = DBUtil.now(),
-        updated_at = DBUtil.now()
-    })
+        updated_at = DBUtil.now(),
+    }))
 
-    self._conn:insert("directory", dict)
-
-    return dict.uuid
+    return uuid
 end
 
 ---@param uuid string
@@ -426,16 +457,20 @@ end
 ---@param tag Tag
 ---@return string
 function DoodleDB:create_tag(tag)
-    local dict = DBUtil.dict({
+    local sql = [[
+    INSERT INTO tag (uuid, name, created_at, updated_at)
+    VALUES (:uuid, :name, :created_at, :updated_at);
+    ]]
+
+    local uuid = tag.uuid and tag.uuid or SyncUtil.uuid()
+    self._conn:eval(sql, DBUtil.dict({
+        uuid = uuid,
         name = tag.name,
-        uuid = tag.uuid and tag.uuid or SyncUtil.uuid(),
         created_at = DBUtil.now(),
-        updated_at = DBUtil.now()
-    })
+        updated_at = DBUtil.now(),
+    }))
 
-    self._conn:insert("tag", dict)
-
-    return dict.uuid
+    return uuid
 end
 
 ---@param name string
@@ -496,6 +531,29 @@ function DoodleDB:clear_tag(note_id)
             updated_at = DBUtil.now()
         })
     })
+end
+
+---@param link Link
+---@return string
+function DoodleDB:create_link(link)
+    local sql = [[
+    INSERT INTO link (src, dest, link_str, to_note, uuid, created_at, updated_at)
+    VALUES (:src, :dest, :link_str, :to_note, :uuid, :created_at, :updated_at);
+    ]]
+
+    local uuid = link.uuid and link.uuid or SyncUtil.uuid()
+    print("link str", link.link_str)
+    self._conn:eval(sql, DBUtil.dict({
+        src = link.src,
+        dest = link.dest,
+        link_str = "\"" .. link.link_str .. "\"",
+        to_note = link.to_note and 1 or 0,
+        uuid = uuid,
+        created_at = DBUtil.now(),
+        updated_at = DBUtil.now()
+    }))
+
+    return uuid
 end
 
 ---@param table_name string

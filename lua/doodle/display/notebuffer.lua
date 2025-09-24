@@ -2,6 +2,7 @@ local Present = require("doodle.display.present")
 local Note = require("doodle.note")
 local NoteTag = require("doodle.tags.note_tag")
 local Help = require("doodle.display.help")
+local LinkUtil = require("doodle.utils.link_util")
 
 local M = {}
 
@@ -73,6 +74,7 @@ function M.setup(bufnr, blob, path)
     vim.api.nvim_create_autocmd({ "BufLeave" }, {
         buffer = bufnr,
         callback = function(args)
+            print("in bufleave")
             local is_modified = vim.api.nvim_get_option_value("modified", { buf = args.buf })
             if ui.settings.auto_save and is_modified then
                 vim.api.nvim_buf_call(args.buf, function()
@@ -86,22 +88,13 @@ function M.setup(bufnr, blob, path)
 
     vim.bo[bufnr].omnifunc = "v:lua.doodle.completion.complete_tags"
 
-    vim.keymap.set("i", "<C-l>", "<C-x><C-o>", {
+    vim.api.nvim_create_autocmd({ "BufUnload" }, {
         buffer = bufnr,
-        remap = true,
-        silent = true
+        callback = function()
+            print("bufdelete closing note")
+            ui:close_note(bufnr)
+        end
     })
-
-    -- vim.api.nvim_create_autocmd({ "BufUnload" }, {
-    --     buffer = bufnr,
-    --     callback = function()
-    --         print("bufdelete closing note")
-    --         vim.schedule(function()
-    --             ui:close_note(bufnr)
-    --         end)
-    --     end
-    -- })
-    --
 
     vim.keymap.set("n", "-", function()
         local note = Note.get(blob.note_id, ui.db)
@@ -131,38 +124,7 @@ function M.setup(bufnr, blob, path)
     end
 
     vim.keymap.set("n", "<CR>", function()
-        local line = vim.api.nvim_get_current_line()
-        local col = vim.api.nvim_win_get_cursor(0)[2]
-
-        local link_found = false
-        for text, dest in string.gmatch(line, "%[([^]]+)]%(([^)]+)%)") do
-            local link_text = string.format("[%s](%s)", text, dest)
-            local start_idx, end_idx = string.find(line, link_text, 1, true)
-
-            if start_idx and col >= start_idx - 1 and col < end_idx then
-                if dest:find("[/\\.]") then
-                    local file_path, line_num_str = dest:match("^([^:]+):?(%d*)$")
-                    file_path = file_path or dest
-
-                    vim.cmd("edit " .. vim.fn.fnameescape(file_path))
-
-                    local line_num = tonumber(line_num_str)
-                    if line_num and line_num > 0 then
-                        vim.api.nvim_win_set_cursor(0, { line_num, 0 })
-                    else
-                        vim.api.nvim_win_set_cursor(0, { 1, 0 })
-                    end
-                else
-                    ui:open_note(dest, text)
-                end
-
-                link_found = true
-                break
-            end
-        end
-        if not link_found then
-            vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<CR>", true, false, true), 'n', false)
-        end
+        LinkUtil.go_to_link()
     end, { buffer = bufnr, silent = true })
 
     -- vim.keymap.set("n", "_", function()

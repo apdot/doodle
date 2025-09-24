@@ -24,7 +24,7 @@ local DoodleConfig = {}
 
 function DoodleConfig.get_default()
     local settings = {
-        auto_save = true,
+        auto_save = false,
         sync = true,
         git_repo = "/Users/anirudh/.local/share/nvim/doodle/doodle-sync",
         hide_hint = true,

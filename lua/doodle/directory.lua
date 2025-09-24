@@ -106,7 +106,7 @@ end
 ---@param db DoodleDB
 ---@return DoodleDirectory[]
 function DoodleDirectory.get_all(db)
-    local directories = db:get_all(table_name)
+    local directories = db:get_all(table_name, "name")
 
     return DoodleDirectory.from_list(directories)
 end

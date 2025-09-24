@@ -12,6 +12,7 @@ local DoodleNote = require("doodle.note")
 local DoodleBlob = require("doodle.blob")
 local Tag = require("doodle.tags.tag")
 local NoteTag = require("doodle.tags.note_tag")
+local Link = require("doodle.link")
 
 ---@class DoodleSync
 ---@field ensure boolean
@@ -116,6 +117,9 @@ function DoodleSync:apply_operations(oplog)
         if #oplog.note_tag > 0 then
             NoteTag.update(oplog.note_tag, self.db)
         end
+        if #oplog.link > 0 then
+            Link.update(oplog.link, self.db)
+        end
         print("applied notetag")
     end)
 end
@@ -209,6 +213,7 @@ function DoodleSync:create_snapshot()
     local blobs = DoodleBlob.get_all(self.db)
     local tags = Tag.get_all(self.db)
     local note_tags = NoteTag.get_all(self.db)
+    local links = Link.get_all(self.db)
 
     local oplog = DoodleOplog:new()
     oplog.directory = directories
@@ -216,6 +221,7 @@ function DoodleSync:create_snapshot()
     oplog.blob = blobs
     oplog.tag = tags
     oplog.note_tag = note_tags
+    oplog.link = links
 
     local new_snapshot_path = Path:new(self.settings.git_repo .. "/SNAPSHOT-" .. DBUtil.now())
 
@@ -230,6 +236,7 @@ function DoodleSync:append_oplog()
     local blobs = DoodleBlob.get_unsynced(self.db)
     local tags = Tag.get_unsynced(self.db)
     local note_tags = NoteTag.get_unsynced(self.db)
+    local links = Link.get_unsynced(self.db)
 
     local oplog = DoodleOplog:new()
     oplog.directory = directories
@@ -237,6 +244,7 @@ function DoodleSync:append_oplog()
     oplog.blob = blobs
     oplog.tag = tags
     oplog.note_tag = note_tags
+    oplog.link = links
 
     local oplog_path = Path:new(self.settings.git_repo .. "/" .. oplog_file)
     self.config.bytes = oplog_path:_stat().size
@@ -256,6 +264,17 @@ local function update_synclog(settings, config)
     synclog_path:write(vim.json.encode(synclog), "w")
 end
 
+---@param oplog DoodleOplog
+---@param now integer
+local function update_synced_at(oplog, now)
+    DBUtil.update_synced_at(oplog.directory, now)
+    DBUtil.update_synced_at(oplog.note, now)
+    DBUtil.update_synced_at(oplog.blob, now)
+    DBUtil.update_synced_at(oplog.tag, now)
+    DBUtil.update_synced_at(oplog.note_tag, now)
+    DBUtil.update_synced_at(oplog.link, now)
+end
+
 function DoodleSync:push()
     local files = { oplog_file, synclog_file }
     local now = DBUtil.now()
@@ -271,11 +290,7 @@ function DoodleSync:push()
         oplog, file_path = self:append_oplog()
     end
 
-    DBUtil.update_synced_at(oplog.directory, now)
-    DBUtil.update_synced_at(oplog.note, now)
-    DBUtil.update_synced_at(oplog.blob, now)
-    DBUtil.update_synced_at(oplog.tag, now)
-    DBUtil.update_synced_at(oplog.note_tag, now)
+    update_synced_at(oplog, now)
 
     file_path:write(vim.json.encode(oplog) .. "\n", "a")
     if not should_create_snapshot then
@@ -295,6 +310,7 @@ function DoodleSync:push()
         DoodleBlob.mark_synced(oplog.blob, now, self.db)
         Tag.mark_synced(oplog.tag, now, self.db)
         NoteTag.mark_synced(oplog.note_tag, now, self.db)
+        Link.mark_synced(oplog.link, now, self.db)
         vim.notify("Git Push completed successfully.")
     end
 end
@@ -305,6 +321,5 @@ function DoodleSync:sync()
         self:push()
     end
 end
-
 
 return DoodleSync

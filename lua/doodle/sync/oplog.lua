@@ -4,6 +4,7 @@
 ---@field blob DoodleBlob[]
 ---@field tag Tag[]
 ---@field note_tag NoteTag[]
+---@field link Link[]
 local DoodleOplog = {}
 DoodleOplog.__index = DoodleOplog
 
@@ -13,7 +14,8 @@ function DoodleOplog:new()
         note = {},
         blob = {},
         tag = {},
-        note_tag = {}
+        note_tag = {},
+        link = {}
     }, self)
 end
 
@@ -29,17 +31,20 @@ function DoodleOplog.create(data_str)
                 if obj.directory then
                     vim.list_extend(oplog.directory, obj.directory)
                 end
-                if obj.directory then
+                if obj.note then
                     vim.list_extend(oplog.note, obj.note)
                 end
-                if obj.directory then
+                if obj.blob then
                     vim.list_extend(oplog.blob, obj.blob)
                 end
-                if obj.directory then
+                if obj.tag then
                     vim.list_extend(oplog.tag, obj.tag)
                 end
-                if obj.directory then
+                if obj.note_tag then
                     vim.list_extend(oplog.note_tag, obj.note_tag)
+                end
+                if obj.link then
+                    vim.list_extend(oplog.link, obj.link)
                 end
             end
         end

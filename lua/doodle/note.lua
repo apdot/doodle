@@ -113,7 +113,7 @@ end
 ---@param db DoodleDB
 ---@return DoodleNote[]
 function DoodleNote.get_all(db)
-    local notes = db:get_all(table_name)
+    local notes = db:get_all(table_name, "title")
 
     return DoodleNote.from_list(notes)
 end
