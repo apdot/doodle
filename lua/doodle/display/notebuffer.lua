@@ -3,6 +3,7 @@ local Note = require("doodle.note")
 local NoteTag = require("doodle.tags.note_tag")
 local Help = require("doodle.display.help")
 local LinkUtil = require("doodle.utils.link_util")
+local DBUtil = require("doodle.utils.db_util")
 
 local M = {}
 
@@ -42,7 +43,8 @@ function M.setup(bufnr, blob, path)
         local bufname = table.concat(path, "/") .. ".doodle"
         local ok = pcall(vim.api.nvim_buf_set_name, bufnr, bufname)
         if not ok then
-            bufname = bufname .. ":" .. blob.uuid
+            local suffix = blob.uuid or DBUtil.now()
+            bufname = bufname .. ":" .. suffix
             pcall(vim.api.nvim_buf_set_name, bufnr, bufname)
         end
     end
