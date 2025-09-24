@@ -8,6 +8,7 @@ local DoodleNote = require("doodle.note")
 local DoodleBlob = require("doodle.blob")
 local Help = require("doodle.display.help")
 local Link = require("doodle.link")
+local Static = require("doodle.static")
 
 local preview_cache = {}
 
@@ -65,7 +66,7 @@ local function create_previewer(ui)
 end
 
 local function make_display(entry)
-    return entry.path .. "/" .. entry.title
+    return Static.FILE .. " " .. entry.path .. "/" .. entry.title
 end
 
 local function make_ordinal(entry)

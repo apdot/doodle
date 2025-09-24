@@ -13,7 +13,8 @@ function M.parse_finder_line(line)
     end
     parsed_line.uuid = id
 
-    rest = FormatUtil.trim(rest)
+    rest = FormatUtil.trim(rest):gsub("^%S+%s+", "")
+
     local path = {}
     for part in rest:gmatch("[^/]+") do
         part = FormatUtil.trim(part)

@@ -1,3 +1,5 @@
+local Static = require("doodle.static")
+
 local Present = {}
 
 local ID = "@@@"
@@ -13,8 +15,7 @@ function Present.get_finder_content(notes, directories)
     if notes then
         for id, note in pairs(notes) do
             if note.status ~= 2 then
-                -- print("note id", ID .. "N" .. id .. " " .. note.title)
-                table.insert(display, ID .. "N" .. id .. " " .. note.title)
+                table.insert(display, ID .. "N" .. id .. " " .. Static.FILE .. " " .. note.title)
                 note.status = 0
             end
         end
@@ -22,7 +23,7 @@ function Present.get_finder_content(notes, directories)
     if directories then
         for id, directory in pairs(directories) do
             if directory.status ~= 2 then
-                table.insert(display, ID .. "D" .. id .. " " .. directory.name .. "/")
+                table.insert(display, ID .. "D" .. id .. " " .. Static.DIRECTORY .. " " .. directory.name .. "/")
                 directory.status = 0
             end
         end
@@ -100,13 +101,12 @@ end
 ---@param labels string[]
 ---@return string[]
 function Present.get_labels(labels)
-    local icon = " "
     local display = {}
 
     table.insert(display, "")
 
     for _, label in pairs(labels) do
-        table.insert(display, icon .. label)
+        table.insert(display, Static.FILE .. " " .. label)
     end
 
     return display

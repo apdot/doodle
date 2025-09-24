@@ -1,0 +1,4 @@
+return {
+    FILE = "",
+    DIRECTORY = ""
+}
