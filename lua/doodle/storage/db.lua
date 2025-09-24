@@ -240,7 +240,7 @@ function DoodleDB:update_blob(blob)
             content = blob.content,
             updated_at = DBUtil.now()
         })
-    })
+   })
 end
 
 ---@param note DoodleNote
@@ -546,7 +546,7 @@ function DoodleDB:create_link(link)
     self._conn:eval(sql, DBUtil.dict({
         src = link.src,
         dest = link.dest,
-        link_str = "'" .. link.link_str .. "'",
+        link_str = "\"" .. link.link_str .. "\"",
         to_note = link.to_note and 1 or 0,
         uuid = uuid,
         created_at = DBUtil.now(),

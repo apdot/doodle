@@ -23,7 +23,7 @@ function M.build(db)
             local dest_note = graph.note_map[link.dest]
             if dest_note then
                 local backlink = Link:new(link)
-                local backlink_str = ("'[%s](%s)'"):format(src_note.title, src_note.uuid)
+                local backlink_str = ("\"[%s](%s)\""):format(src_note.title, src_note.uuid)
                 backlink.link_str = backlink_str
                 table.insert(graph.adjacency[link.dest].incoming, { note = src_note, link = backlink })
             else

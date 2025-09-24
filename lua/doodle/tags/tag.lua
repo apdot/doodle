@@ -47,7 +47,7 @@ function Tag.from_list(dict)
 end
 
 ---@param db DoodleDB
----@return DoodleNote[]
+---@return Tag[]
 function Tag.get_unsynced(db)
     local tags = db:get_unsynced(table_name)
 

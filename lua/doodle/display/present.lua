@@ -146,9 +146,9 @@ function Present.get_links(adjacency)
             table.insert(display, ("  - %s/%s %s"):format(note_data.note.path,
                 note_data.link.link_str:sub(2, -2), format_time_ago(note_data.link.created_at)))
         end
-    else
-        table.insert(display, "")
     end
+
+    table.insert(display, "")
 
     table.insert(display, "# Incoming: ()")
     local incoming = adjacency.incoming

@@ -89,7 +89,7 @@ end
 ---@param db DoodleDB
 ---@return DoodleBlob[]
 function DoodleBlob.get_all(db)
-    local blobs = db:get_all(table_name)
+    local blobs = db:get_all(table_name, "created_at")
 
     return DoodleBlob.from_list(blobs)
 end

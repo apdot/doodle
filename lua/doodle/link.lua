@@ -1,3 +1,5 @@
+local DBUtil = require("doodle.utils.db_util")
+
 ---@class Link
 ---@field uuid string
 ---@field src string
@@ -72,6 +74,62 @@ function Link.get_all(db)
     local links = db:get_all(table_name, "created_at")
 
     return Link.from_list(links)
+end
+
+---@param db DoodleDB
+---@return Link[]
+function Link.get_unsynced(db)
+    local links = db:get_unsynced(table_name)
+
+    return Link.from_list(links)
+end
+
+---@param dict table
+---@param now integer
+---@param db DoodleDB
+function Link.mark_synced(dict, now, db)
+    local uuids = DBUtil.get_query_uuids(dict)
+    local values = {}
+    for _, uuid in pairs(uuids) do
+        table.insert(values, ("(%s)"):format(uuid))
+    end
+
+    if uuids and #uuids > 0 then
+        db:mark_synced(table_name, primary_key, table.concat(values, ","), now)
+    end
+end
+
+---@param dict table
+---@param db DoodleDB
+---@param where string
+function Link.bulk_upsert(dict, where, db)
+    local values_dict = {}
+    for _, link in pairs(dict) do
+        table.insert(values_dict, DBUtil.format_values({
+            link.uuid,
+            link.src,
+            link.dest,
+            link.link_str,
+            link.to_note,
+            link.created_at or DBUtil.now(),
+            link.updated_at or DBUtil.now(),
+            link.synced_at or vim.NIL
+        }))
+    end
+
+    if #values_dict == 0 then
+        return
+    end
+
+    local values = table.concat(values_dict, ",")
+    db:bulk_upsert(table_name, columns, values, primary_key, where)
+end
+
+---@param dict table
+---@param db DoodleDB
+function Link.update(dict, db)
+    local where = ("%s.updated_at < excluded.updated_at"):format(table_name)
+    return Link.bulk_upsert(dict, where, db)
 end
 
 return Link

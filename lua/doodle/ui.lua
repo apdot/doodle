@@ -211,9 +211,11 @@ end
 
 ---@param note_id string
 function DoodleUI:open_note(note_id)
-    print("note id", note_id)
-    if self.open_notes and #self.open_notes > 0 then
+    print("reandom note id", note_id)
+    if self.open_notes then
+        print("in open notes")
         for bufnr, note_info in pairs(self.open_notes) do
+            print("loop", bufnr, note_info.blob.note_id)
             if note_info.blob.note_id == note_id and vim.api.nvim_win_is_valid(note_info.win_id) then
                 print("existing note")
                 vim.schedule(function()
@@ -225,6 +227,7 @@ function DoodleUI:open_note(note_id)
     end
 
     local blob = DoodleBlob.get(note_id, self.db)
+    print("random blob note_id", blob.note_id)
     local bufnr, win_id = View.create_window()
     local note = Note.get(note_id, self.db)
 

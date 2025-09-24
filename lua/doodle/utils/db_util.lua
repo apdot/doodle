@@ -47,7 +47,11 @@ local function format_data(value)
     if value == vim.NIL then
         return "NULL"
     elseif type(value) == "string" then
-        return "'" .. value .. "'"
+        local first_char = string.sub(value, 1, 1)
+        if first_char ~= "'" then
+            return "'" .. value .. "'"
+        end
+        return value
     else
         return tostring(value)
     end
@@ -114,7 +118,7 @@ function M.get_query_where(dict)
     return table.concat(where, " AND ")
 end
 
----@param objs table 
+---@param objs table
 ---@param now integer
 function M.update_synced_at(objs, now)
     for _, obj in pairs(objs) do
