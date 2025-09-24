@@ -13,17 +13,17 @@ function Present.get_finder_content(notes, directories)
     table.insert(display, "")
 
     if notes then
-        for id, note in pairs(notes) do
+        for _, note in pairs(notes) do
             if note.status ~= 2 then
-                table.insert(display, ID .. "N" .. id .. " " .. Static.FILE .. " " .. note.title)
+                table.insert(display, ID .. "N" .. note.uuid .. " " .. Static.FILE .. " " .. note.title)
                 note.status = 0
             end
         end
     end
     if directories then
-        for id, directory in pairs(directories) do
+        for _, directory in pairs(directories) do
             if directory.status ~= 2 then
-                table.insert(display, ID .. "D" .. id .. " " .. Static.DIRECTORY .. " " .. directory.name .. "/")
+                table.insert(display, ID .. "D" .. directory.uuid .. " " .. Static.DIRECTORY .. " " .. directory.name .. "/")
                 directory.status = 0
             end
         end

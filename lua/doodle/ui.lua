@@ -7,6 +7,7 @@ local DoodleDirectory = require("doodle.directory")
 local DoodleNote = require("doodle.note")
 local DoodleBlob = require("doodle.blob")
 local DBUtil = require("doodle.utils.db_util")
+local FormatUtil = require("doodle.utils.format_util")
 local Note = require("doodle.note")
 local NoteTag = require("doodle.tags.note_tag")
 local Graph = require("doodle.graph")
@@ -31,7 +32,9 @@ local Graph = require("doodle.graph")
 ---@field branch string
 ---@field breadcrumbs { [1]: string, [2]: string }[]
 ---@field notes { [string]: DoodleNote }
+---@field display_notes DoodleNote[]
 ---@field directories { [string]: DoodleDirectory }
+---@field display_directories DoodleDirectory[]
 ---@field db DoodleDB
 ---@field settings DoodleSettings
 local DoodleUI = {}
@@ -87,6 +90,7 @@ function DoodleUI:update_finder(parsed)
                 local dir = self.directories[line.uuid]
                 if not dir then
                     dir = DoodleDirectory.get(line.uuid, self.db)
+                    table.insert(self.display_directories, dir)
                 end
                 if dir.status == 1 then
                     dir = DoodleDirectory.deep_copy(line.uuid, curr_parent, self.db)
@@ -100,6 +104,7 @@ function DoodleUI:update_finder(parsed)
                 dir.updated_at = DBUtil.now()
 
                 self.directories[dir.uuid] = dir
+
                 curr_parent = dir.uuid
                 table.insert(path, dir.name)
                 table.insert(path_ids, dir.uuid)
@@ -107,6 +112,7 @@ function DoodleUI:update_finder(parsed)
                 local note = self.notes[line.uuid]
                 if not note then
                     note = DoodleNote.get(line.uuid, self.db)
+                    table.insert(self.display_notes, note)
                 end
                 if note.status == 1 then
                     note = DoodleNote.copy(line.uuid, curr_parent, self.db)
@@ -135,6 +141,7 @@ function DoodleUI:update_finder(parsed)
 
             if curr_parent == self.breadcrumbs[#self.breadcrumbs][1] then
                 self.directories[new_dir.uuid] = new_dir
+                table.insert(self.display_directories, new_dir)
             end
 
             curr_parent = new_dir.uuid
@@ -153,21 +160,25 @@ function DoodleUI:update_finder(parsed)
 
             if curr_parent == self.breadcrumbs[#self.breadcrumbs][1] then
                 self.notes[new_note.uuid] = new_note
+                table.insert(self.display_notes, new_note)
             end
         end
     end
 
     self:mark_deleted()
+
+    self.display_directories = FormatUtil.sort_note_or_directories(self.display_directories)
+    self.display_notes = FormatUtil.sort_note_or_directories(self.display_notes)
 end
 
 function DoodleUI:load_current_directory()
-    local notes, directories = self.db:load_finder(self.breadcrumbs[#self.breadcrumbs][1])
+    self.display_notes, self.display_directories = self.db:load_finder(self.breadcrumbs[#self.breadcrumbs][1])
     self.notes, self.directories = {}, {}
-    for _, note in ipairs(notes) do
+    for _, note in ipairs(self.display_notes) do
         note.status = 1
         self.notes[note.uuid] = note
     end
-    for _, directory in ipairs(directories) do
+    for _, directory in ipairs(self.display_directories) do
         directory.status = 1
         self.directories[directory.uuid] = directory
     end
@@ -211,7 +222,6 @@ end
 
 ---@param note_id string
 function DoodleUI:open_note(note_id)
-    print("reandom note id", note_id)
     if self.open_notes then
         print("in open notes")
         for bufnr, note_info in pairs(self.open_notes) do
@@ -227,11 +237,9 @@ function DoodleUI:open_note(note_id)
     end
 
     local blob = DoodleBlob.get(note_id, self.db)
-    print("random blob note_id", blob.note_id)
     local bufnr, win_id = View.create_window()
     local note = Note.get(note_id, self.db)
 
-    print("open note bufnr for todo", bufnr)
     self.open_notes[bufnr] = {
         win_id = win_id,
         title = note.title,
@@ -253,7 +261,7 @@ function DoodleUI:close_note(bufnr)
 end
 
 function DoodleUI:render_finder()
-    local content = Present.get_finder_content(self.notes, self.directories)
+    local content = Present.get_finder_content(self.display_notes, self.display_directories)
     local bufnr, win_id = self.bufnr, self.win_id
 
     View.render(bufnr, win_id, content, View.scope_line(self.current_scope),

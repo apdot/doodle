@@ -4,6 +4,8 @@ local DBUtil = require("doodle.utils.db_util")
 local SyncUtil = require("doodle.utils.sync_util")
 local DoodleNote = require("doodle.note")
 local DoodleDirectory = require("doodle.directory")
+local NoteTag = require("doodle.tags.note_tag")
+local FormatUtil = require("doodle.utils.format_util")
 
 ---@class DoodleDB
 ---@field config DoodleConfig
@@ -148,7 +150,7 @@ function DoodleDB:load_finder(parent)
     })
 
     for k, note in pairs(notes) do
-        -- print(note.uuid, note.project, note.branch, note.title, note.created_at, note.updated_at)
+        -- print("notes fetched", note.uuid, note.project, note.branch, note.title, note.created_at, note.updated_at)
     end
 
     local directories = self._conn:select("directory", {
@@ -184,6 +186,7 @@ end
 ---@param blob DoodleBlob
 ---@return string
 function DoodleDB:create_blob(blob)
+    local now = DBUtil.now()
     local sql = [[
     INSERT INTO blob (uuid, note_id, content, created_at, updated_at)
     VALUES (:uuid, :note_id, :content, :created_at, :updated_at);
@@ -194,9 +197,11 @@ function DoodleDB:create_blob(blob)
         uuid = uuid,
         note_id = blob.note_id,
         content = blob.content,
-        created_at = DBUtil.now(),
-        updated_at = DBUtil.now(),
+        created_at = now,
+        updated_at = now,
     }))
+
+    NoteTag.bulk_map({ FormatUtil.get_date(now) }, { blob.note_id }, self)
 
     return uuid
 end
@@ -240,7 +245,7 @@ function DoodleDB:update_blob(blob)
             content = blob.content,
             updated_at = DBUtil.now()
         })
-   })
+    })
 end
 
 ---@param note DoodleNote
@@ -501,7 +506,7 @@ function DoodleDB:get_tags_for_note(note_id)
     INNER JOIN tag ON note_tag.tag_id = tag.uuid
     WHERE
         note_tag.note_id = '%s' AND note_tag.status < 2
-    ORDER BY note_tag.created_at DESC
+    ORDER BY tag.name ASC
     ]]):format(note_id))
 
     if not tags or type(tags) == "boolean" or #tags == 0 then

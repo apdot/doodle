@@ -18,4 +18,30 @@ function M.get_date_time(timestamp)
     return date_time
 end
 
+---@param timestamp integer
+---@return string
+function M.get_date(timestamp)
+    local date
+
+    if type(timestamp) == "number" then
+        date = os.date("%Y-%m-%d", timestamp)
+    else
+        date = "NA"
+    end
+
+    return date
+end
+
+---@param items DoodleNote[] | DoodleDirectory[]
+---@return DoodleNote[] | DoodleDirectory[]
+function M.sort_note_or_directories(items)
+    table.sort(items, function(a, b)
+        local a_name = a.title or a.name
+        local b_name = b.title or b.name
+        return a_name < b_name
+    end)
+
+    return items
+end
+
 return M

@@ -21,10 +21,6 @@ local keymaps = {
 local function update_tags(bufnr, blob, db)
     local tag_line = vim.api.nvim_buf_get_lines(bufnr, 2, 3, false)[1] or ""
     local tags = Present.get_tags(tag_line)
-    print("tags i got for present")
-    for k, v in pairs(tags) do
-        print(k, v)
-    end
     NoteTag.clear(blob.note_id, db)
     NoteTag.bulk_map(tags, { blob.note_id }, db)
 end
