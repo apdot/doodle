@@ -1,9 +1,9 @@
 local Present = require("doodle.display.present")
 local Note = require("doodle.note")
-local NoteTag = require("doodle.tags.note_tag")
 local Help = require("doodle.display.help")
 local LinkUtil = require("doodle.utils.link_util")
 local DBUtil = require("doodle.utils.db_util")
+local TagUtil = require("doodle.utils.tag_util")
 
 local M = {}
 
@@ -11,20 +11,10 @@ local ns = vim.api.nvim_create_namespace("doodle_hint")
 
 local keymaps = {
     { key = ":w",         description = "Save Note" },
-    { key = "<CR>",       description = "Open link under cursor" },
+    { key = "<CR>",       description = "Open link under cursor or search notes for tag" },
     { key = "-",          description = "Open finder at note location" },
     { key = "<C-x><C-o>", description = "Auto-complete tags" },
 }
-
----@param bufnr integer
----@param blob DoodleBlob
----@param db DoodleDB
-local function update_tags(bufnr, blob, db)
-    local tag_line = vim.api.nvim_buf_get_lines(bufnr, 2, 3, false)[1] or ""
-    local tags = Present.get_tags(tag_line)
-    NoteTag.clear(blob.note_id, db)
-    NoteTag.bulk_map(tags, { blob.note_id }, db)
-end
 
 ---@param bufnr integer
 ---@return string
@@ -54,7 +44,7 @@ function M.setup(bufnr, blob, path)
     vim.api.nvim_create_autocmd({ "BufWriteCmd" }, {
         buffer = bufnr,
         callback = function(args)
-            update_tags(args.buf, blob, ui.db)
+            TagUtil.update_tags(args.buf, blob, ui.db)
             blob.content = get_content(args.buf)
             print("content in save", blob.content)
             blob:save(ui.db)
@@ -119,6 +109,13 @@ function M.setup(bufnr, blob, path)
     end
 
     vim.keymap.set("n", "<CR>", function()
+        local cursor = vim.api.nvim_win_get_cursor(0)
+        local line_num = cursor[1]
+        local line = vim.api.nvim_buf_get_lines(bufnr, line_num - 1, line_num, false)[1] or ""
+        if line_num == 3 and line:match("^Tags:") then
+            local tag_found_at_cursor = TagUtil.go_to_tag(bufnr, ui.settings.picker_theme)
+            if tag_found_at_cursor then return end
+        end
         LinkUtil.go_to_link()
     end, { buffer = bufnr, silent = true })
 
