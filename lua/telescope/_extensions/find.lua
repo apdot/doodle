@@ -42,7 +42,7 @@ end
 local function create_previewer(ui)
     return previewers.new_buffer_previewer({
         title = "Note Content",
-        define_preview = function(self, entry, status)
+        define_preview = function(self, entry)
             local content
 
             local note_id = entry.value.uuid

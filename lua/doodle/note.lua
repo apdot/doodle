@@ -141,6 +141,14 @@ function DoodleNote:get_scope(settings)
     return 1
 end
 
+---@param note_id string
+---@param db DoodleDB
+---@return { outgoing: integer, incoming: integer }
+function DoodleNote.get_links_count(note_id, db)
+    local outgoing, incoming = db:get_note_links_count(note_id)
+    return { outgoing = outgoing, incoming = incoming }
+end
+
 ---@param dict table
 ---@param now integer
 ---@param db DoodleDB

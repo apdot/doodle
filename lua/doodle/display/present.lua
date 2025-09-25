@@ -23,7 +23,8 @@ function Present.get_finder_content(notes, directories)
     if directories then
         for _, directory in pairs(directories) do
             if directory.status ~= 2 then
-                table.insert(display, ID .. "D" .. directory.uuid .. " " .. Static.DIRECTORY .. " " .. directory.name .. "/")
+                table.insert(display,
+                    ID .. "D" .. directory.uuid .. " " .. Static.DIRECTORY .. " " .. directory.name .. "/")
                 directory.status = 0
             end
         end
@@ -139,7 +140,7 @@ function Present.get_links(adjacency)
     local display = {}
     table.insert(display, "")
 
-    table.insert(display, "# Outgoing: ()")
+    table.insert(display, ("# Outgoing: (%s)"):format(Static.OUTGOING))
     local outgoing = adjacency.outgoing
     if outgoing and #outgoing > 0 then
         for _, note_data in pairs(outgoing) do
@@ -150,7 +151,7 @@ function Present.get_links(adjacency)
 
     table.insert(display, "")
 
-    table.insert(display, "# Incoming: ()")
+    table.insert(display, ("# Incoming: (%s)"):format(Static.INCOMING))
     local incoming = adjacency.incoming
     if incoming and #incoming > 0 then
         for _, note_data in pairs(incoming) do

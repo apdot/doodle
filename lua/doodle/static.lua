@@ -1,4 +1,6 @@
 return {
     FILE = "",
-    DIRECTORY = ""
+    DIRECTORY = "",
+    OUTGOING = "",
+    INCOMING = ""
 }

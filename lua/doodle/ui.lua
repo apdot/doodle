@@ -211,7 +211,7 @@ function DoodleUI:render_note(note, blob, bufnr, win_id)
         NoteTag.get_for_note(note.uuid, self.db))
 
     View.render(bufnr, win_id, content,
-        View.metadata_line(blob, note.title, path), path)
+        View.metadata_line(blob, note.title, path, Note.get_links_count(note.uuid, self.db)), path)
 
     NoteBuffer.setup(bufnr, blob, path)
 

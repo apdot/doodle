@@ -365,6 +365,28 @@ function DoodleDB:copy_note(uuid, parent)
     return copy_id
 end
 
+---@param note_id string
+---@return integer, integer
+function DoodleDB:get_note_links_count(note_id)
+    local sql = [[
+    SELECT
+        COUNT(CASE WHEN src = :note_id THEN 1 END) as outgoing,
+        COUNT(CASE WHEN dest = :note_id THEN 1 END) as incoming
+    FROM
+        link
+    WHERE
+        src = :note_id OR dest = :note_id;
+    ]]
+
+    local result = self._conn:eval(sql, { note_id = note_id })
+
+    if result and result[1] then
+        return result[1].outgoing or 0, result[1].incoming or 0
+    end
+
+    return 0, 0
+end
+
 ---@param directory DoodleDirectory
 ---@return string
 function DoodleDB:create_directory(directory)
