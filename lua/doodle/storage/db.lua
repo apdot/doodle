@@ -465,14 +465,20 @@ function DoodleDB:deep_copy_directory(uuid, parent)
     local copy_id = self:create_directory(dir)
 
     local sub_notes = self._conn:select("note", {
-        where = { parent = uuid }
+        where = {
+            parent = uuid,
+            status = "<" .. 2
+        }
     })
     for _, note in ipairs(sub_notes) do
         self:copy_note(note.uuid, copy_id)
     end
 
     local sub_directories = self._conn:select("directory", {
-        where = { parent = uuid }
+        where = {
+            parent = uuid,
+            status = "<" .. 2
+        }
     })
     for _, sub_directory in ipairs(sub_directories) do
         self:deep_copy_directory(sub_directory.uuid, copy_id)
