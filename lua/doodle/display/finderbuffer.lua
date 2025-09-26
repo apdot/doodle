@@ -91,10 +91,11 @@ function M.setup(bufnr)
 
     vim.keymap.set("n", "<CR>", function()
         local parsed_line = get_line()
-        if not parsed_line or parsed_line.uuid == nil then
+        if not parsed_line or parsed_line.id == nil then
             vim.notify("Save buffer required")
             return
         end
+        local uuid = ui.idx_to_uuid[tonumber(parsed_line.id)]
         if parsed_line.directory then
             if ui.settings.auto_save then
                 local parsed = get_content(bufnr)
@@ -102,7 +103,7 @@ function M.setup(bufnr)
             end
             ui:save()
             vim.schedule(function()
-                table.insert(ui.breadcrumbs, { parsed_line.uuid, parsed_line.directory })
+                table.insert(ui.breadcrumbs, { uuid, parsed_line.directory })
                 ui:load_current_directory()
                 ui:render_finder()
             end)
@@ -110,7 +111,7 @@ function M.setup(bufnr)
             print("toggle finder CR")
             ui:toggle_finder()
             vim.schedule(function()
-                ui:open_note(parsed_line.uuid)
+                ui:open_note(uuid)
             end)
         end
     end, { buffer = bufnr, silent = true })

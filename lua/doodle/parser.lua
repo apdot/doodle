@@ -11,7 +11,7 @@ function M.parse_finder_line(line)
     if not type then
         rest = line
     end
-    parsed_line.uuid = id
+    parsed_line.id = id
 
     rest = FormatUtil.trim(rest):gsub("^%S+%s+", "")
 

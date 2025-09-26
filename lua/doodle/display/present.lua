@@ -6,8 +6,9 @@ local ID = "@@@"
 
 ---@param notes { [string]: DoodleNote }
 ---@param directories { [string]: DoodleDirectory }
+---@param uuid_to_id table<string, integer>
 ---@return string[]
-function Present.get_finder_content(notes, directories)
+function Present.get_finder_content(notes, directories, uuid_to_id)
     local display = {}
 
     table.insert(display, "")
@@ -15,7 +16,9 @@ function Present.get_finder_content(notes, directories)
     if notes then
         for _, note in pairs(notes) do
             if note.status ~= 2 then
-                table.insert(display, ID .. "N" .. note.uuid .. " " .. Static.FILE .. " " .. note.title)
+                local id = uuid_to_id[note.uuid]
+                table.insert(display,
+                    ("%sN%s %s %s"):format(ID, id, Static.FILE, note.title))
                 note.status = 0
             end
         end
@@ -23,8 +26,9 @@ function Present.get_finder_content(notes, directories)
     if directories then
         for _, directory in pairs(directories) do
             if directory.status ~= 2 then
+                local id = uuid_to_id[directory.uuid]
                 table.insert(display,
-                    ID .. "D" .. directory.uuid .. " " .. Static.DIRECTORY .. " " .. directory.name .. "/")
+                    ("%sD%s %s %s"):format(ID, id, Static.DIRECTORY, directory.name))
                 directory.status = 0
             end
         end

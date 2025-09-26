@@ -13,7 +13,7 @@ local NoteTag = require("doodle.tags.note_tag")
 local Graph = require("doodle.graph")
 
 ---@class DoodleFinderItem
----@field uuid string
+---@field id string
 ---@field note string
 ---@field directory string
 ---@field new_note string
@@ -28,6 +28,8 @@ local Graph = require("doodle.graph")
 ---@field graph table
 ---@field open_notes table<integer, { win_id: integer, title: string, id: string, blob: DoodleBlob }>
 ---@field current_scope integer
+---@field uuid_to_idx table<string, integer>
+---@field idx_to_uuid table<integer, string>
 ---@field root string
 ---@field branch string
 ---@field breadcrumbs { [1]: string, [2]: string }[]
@@ -39,6 +41,8 @@ local Graph = require("doodle.graph")
 ---@field settings DoodleSettings
 local DoodleUI = {}
 DoodleUI.__index = DoodleUI
+
+local idx = 1
 
 ---@param settings DoodleSettings
 ---@param db DoodleDB
@@ -54,6 +58,8 @@ function DoodleUI:new(settings, db)
         notes = {},
         directories = {},
         open_notes = {},
+        uuid_to_idx = {},
+        idx_to_uuid = {},
         db = db,
         settings = settings
     }, self)
@@ -79,21 +85,34 @@ function DoodleUI:mark_deleted()
     end
 end
 
+function DoodleUI:map_idx(uuid)
+    if self.uuid_to_idx[uuid] == nil then
+        self.uuid_to_idx[uuid] = idx
+        self.idx_to_uuid[idx] = uuid
+        idx = idx + 1
+    end
+end
+
 ---@param parsed DoodleFinderItem[]
 function DoodleUI:update_finder(parsed)
     for _, line in ipairs(parsed) do
         local curr_parent = self.breadcrumbs[#self.breadcrumbs][1]
         local path = Present.get_path(self.breadcrumbs)
         local path_ids = Present.get_path_ids(self.breadcrumbs)
-        if line.uuid ~= nil then
+        if line.id ~= nil then
+            local uuid = self.idx_to_uuid[tonumber(line.id)]
+            print("line id in update", line.id)
+            print("uuid in update", uuid)
             if line.directory ~= nil then
-                local dir = self.directories[line.uuid]
+                local dir = self.directories[uuid]
                 if not dir then
-                    dir = DoodleDirectory.get(line.uuid, self.db)
+                    dir = DoodleDirectory.get(uuid, self.db)
                     table.insert(self.display_directories, dir)
                 end
                 if dir.status == 1 then
-                    dir = DoodleDirectory.deep_copy(line.uuid, curr_parent, self.db)
+                    dir = DoodleDirectory.deep_copy(uuid, curr_parent, self.db)
+                    dir.name = line.directory
+                    table.insert(self.display_directories, dir)
                 end
 
                 dir.name = line.directory
@@ -104,18 +123,20 @@ function DoodleUI:update_finder(parsed)
                 dir.updated_at = DBUtil.now()
 
                 self.directories[dir.uuid] = dir
+                self:map_idx(dir.uuid)
 
                 curr_parent = dir.uuid
                 table.insert(path, dir.name)
                 table.insert(path_ids, dir.uuid)
             elseif line.note ~= nil then
-                local note = self.notes[line.uuid]
+                local note = self.notes[uuid]
                 if not note then
-                    note = DoodleNote.get(line.uuid, self.db)
+                    note = DoodleNote.get(uuid, self.db)
                     table.insert(self.display_notes, note)
                 end
                 if note.status == 1 then
-                    note = DoodleNote.copy(line.uuid, curr_parent, self.db)
+                    note = DoodleNote.copy(uuid, curr_parent, self.db)
+                    table.insert(self.display_notes, note)
                 end
 
                 note.title = line.note
@@ -128,6 +149,7 @@ function DoodleUI:update_finder(parsed)
                 note.updated_at = DBUtil.now()
 
                 self.notes[note.uuid] = note
+                self:map_idx(note.uuid)
             end
         end
 
@@ -142,6 +164,7 @@ function DoodleUI:update_finder(parsed)
             if curr_parent == self.breadcrumbs[#self.breadcrumbs][1] then
                 self.directories[new_dir.uuid] = new_dir
                 table.insert(self.display_directories, new_dir)
+                self:map_idx(new_dir.uuid)
             end
 
             curr_parent = new_dir.uuid
@@ -161,6 +184,7 @@ function DoodleUI:update_finder(parsed)
             if curr_parent == self.breadcrumbs[#self.breadcrumbs][1] then
                 self.notes[new_note.uuid] = new_note
                 table.insert(self.display_notes, new_note)
+                self:map_idx(new_note.uuid)
             end
         end
     end
@@ -177,10 +201,12 @@ function DoodleUI:load_current_directory()
     for _, note in ipairs(self.display_notes) do
         note.status = 1
         self.notes[note.uuid] = note
+        self:map_idx(note.uuid)
     end
     for _, directory in ipairs(self.display_directories) do
         directory.status = 1
         self.directories[directory.uuid] = directory
+        self:map_idx(directory.uuid)
     end
 end
 
@@ -261,7 +287,8 @@ function DoodleUI:close_note(bufnr)
 end
 
 function DoodleUI:render_finder()
-    local content = Present.get_finder_content(self.display_notes, self.display_directories)
+    local content = Present.get_finder_content(self.display_notes,
+        self.display_directories, self.uuid_to_idx)
     local bufnr, win_id = self.bufnr, self.win_id
 
     View.render(bufnr, win_id, content, View.scope_line(self.current_scope),

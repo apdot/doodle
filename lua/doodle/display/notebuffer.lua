@@ -85,6 +85,7 @@ function M.setup(bufnr, blob, path)
     })
 
     vim.keymap.set("n", "-", function()
+        ui:save()
         local note = Note.get(blob.note_id, ui.db)
         ui.breadcrumbs = Present.create_breadcrumbs(vim.split(note.path, "/"),
             vim.split(note.path_ids, "/"))
