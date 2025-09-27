@@ -8,6 +8,7 @@ local DoodleNote = require("doodle.note")
 local DoodleBlob = require("doodle.blob")
 local Help = require("doodle.display.help")
 local Link = require("doodle.link")
+local Static = require("doodle.static")
 
 local preview_cache = {}
 
@@ -31,17 +32,17 @@ local function map_scope_switches(map, prompt_bufnr, opts)
         find_notes(new_opts)
     end
 
-    map("i", "<C-p>", function() switch_scope("Project") end)
-    map("i", "<C-b>", function() switch_scope("Branch") end)
-    map("i", "<C-g>", function() switch_scope("Global") end)
-    map("i", "<C-e>", function() switch_scope("all") end)
+    map({ "i", "n" }, "<C-p>", function() switch_scope("Project") end)
+    map({ "i", "n" }, "<C-b>", function() switch_scope("Branch") end)
+    map({ "i", "n" }, "<C-g>", function() switch_scope("Global") end)
+    map({ "i", "n" }, "<C-e>", function() switch_scope("all") end)
 end
 
 ---@param ui DoodleUI
 local function create_previewer(ui)
     return previewers.new_buffer_previewer({
         title = "Note Content",
-        define_preview = function(self, entry, status)
+        define_preview = function(self, entry)
             local content
 
             local note_id = entry.value.uuid
@@ -65,7 +66,7 @@ local function create_previewer(ui)
 end
 
 local function make_display(entry)
-    return entry.path .. "/" .. entry.title
+    return Static.FILE .. " " .. entry.path .. "/" .. entry.title
 end
 
 local function make_ordinal(entry)
@@ -113,7 +114,7 @@ find_files = function(opts)
     require("telescope.builtin").find_files({
         attach_mappings = function(ff_prompt_bufnr, ff_map)
             map_scope_switches(ff_map, ff_prompt_bufnr, opts)
-            ff_map("i", "<C-l>", function()
+            ff_map({ "i", "n" }, "<C-l>", function()
                 actions.close(ff_prompt_bufnr)
                 local selection = action_state.get_selected_entry()
                 if not selection then return end
@@ -168,10 +169,10 @@ find_notes = function(opts)
             end)
 
             map_scope_switches(map, prompt_bufnr, opts)
-            map("i", "?", function()
+            map({ "i", "n" }, "?", function()
                 Help.show("Doodle Picker Shortcuts", help_keymaps)
             end)
-            map("i", "<C-l>", function()
+            map({ "i", "n" }, "<C-l>", function()
                 local selection = action_state.get_selected_entry()
                 if not selection then
                     return
@@ -181,7 +182,7 @@ find_notes = function(opts)
                     add_link(selection.value.title, selection.value.uuid, true)
                 end)
             end)
-            map("i", "<C-f>", function()
+            map({ "i", "n" }, "<C-f>", function()
                 actions.close(prompt_bufnr)
                 vim.schedule(function()
                     find_files(opts)

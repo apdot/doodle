@@ -27,7 +27,7 @@ function DoodleConfig.get_default()
         auto_save = false,
         sync = true,
         git_repo = "/Users/anirudh/.local/share/nvim/doodle/doodle-sync",
-        hide_hint = true,
+        hide_hint = false,
         project = function()
             return vim.fs.basename(vim.loop.cwd())
         end,

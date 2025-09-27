@@ -131,6 +131,24 @@ function DoodleNote.get_all_with_tags(db, dict)
     return db:get_all_notes_with_tags(where)
 end
 
+---@param settings DoodleSettings
+function DoodleNote:get_scope(settings)
+    if self.project == settings.global() then
+        return 3
+    elseif self.branch ~= nil then
+        return 2
+    end
+    return 1
+end
+
+---@param note_id string
+---@param db DoodleDB
+---@return { outgoing: integer, incoming: integer }
+function DoodleNote.get_links_count(note_id, db)
+    local outgoing, incoming = db:get_note_links_count(note_id)
+    return { outgoing = outgoing, incoming = incoming }
+end
+
 ---@param dict table
 ---@param now integer
 ---@param db DoodleDB

@@ -1,4 +1,5 @@
 local FormatUtil = require("doodle.utils.format_util")
+local Static = require("doodle.static")
 
 local View = {}
 
@@ -135,8 +136,10 @@ function View.scope_line(current_scope)
 end
 
 ---@param blob DoodleBlob
+---@param title string
 ---@param path string[]
-function View.metadata_line(blob, title, path)
+---@param note_links { outgoing: integer, incoming: integer}
+function View.metadata_line(blob, title, path, note_links)
     local virt_text = {}
 
     table.insert(virt_text, { " Title: ", "Comment" })
@@ -157,6 +160,17 @@ function View.metadata_line(blob, title, path)
     table.insert(virt_text, { " Path: ", "Comment" })
     table.insert(virt_text, { table.concat(path, "/") .. " ", "Identifier" })
 
+    table.insert(virt_text, { "| ", "Comment" })
+
+    table.insert(virt_text, { (" %s: "):format(Static.OUTGOING), "Comment" })
+    table.insert(virt_text, { note_links.outgoing .. " ", "Number" })
+
+    table.insert(virt_text, { "| ", "Comment" })
+
+    table.insert(virt_text, { (" %s: "):format(Static.INCOMING), "Comment" })
+    table.insert(virt_text, { note_links.incoming .. " ", "PreProc" })
+
+    print("notelinks in view", note_links.outgoing, note_links.incoming)
     return virt_text
 end
 

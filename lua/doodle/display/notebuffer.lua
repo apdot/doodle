@@ -1,8 +1,9 @@
 local Present = require("doodle.display.present")
 local Note = require("doodle.note")
-local NoteTag = require("doodle.tags.note_tag")
 local Help = require("doodle.display.help")
 local LinkUtil = require("doodle.utils.link_util")
+local DBUtil = require("doodle.utils.db_util")
+local TagUtil = require("doodle.utils.tag_util")
 
 local M = {}
 
@@ -10,24 +11,10 @@ local ns = vim.api.nvim_create_namespace("doodle_hint")
 
 local keymaps = {
     { key = ":w",         description = "Save Note" },
-    { key = "<CR>",       description = "Open link under cursor" },
+    { key = "<CR>",       description = "Open link under cursor or search notes for tag" },
     { key = "-",          description = "Open finder at note location" },
     { key = "<C-x><C-o>", description = "Auto-complete tags" },
 }
-
----@param bufnr integer
----@param blob DoodleBlob
----@param db DoodleDB
-local function update_tags(bufnr, blob, db)
-    local tag_line = vim.api.nvim_buf_get_lines(bufnr, 2, 3, false)[1] or ""
-    local tags = Present.get_tags(tag_line)
-    print("tags i got for present")
-    for k, v in pairs(tags) do
-        print(k, v)
-    end
-    NoteTag.clear(blob.note_id, db)
-    NoteTag.bulk_map(tags, { blob.note_id }, db)
-end
 
 ---@param bufnr integer
 ---@return string
@@ -46,7 +33,8 @@ function M.setup(bufnr, blob, path)
         local bufname = table.concat(path, "/") .. ".doodle"
         local ok = pcall(vim.api.nvim_buf_set_name, bufnr, bufname)
         if not ok then
-            bufname = bufname .. ":" .. blob.uuid
+            local suffix = blob.uuid or DBUtil.now()
+            bufname = bufname .. ":" .. suffix
             pcall(vim.api.nvim_buf_set_name, bufnr, bufname)
         end
     end
@@ -56,7 +44,7 @@ function M.setup(bufnr, blob, path)
     vim.api.nvim_create_autocmd({ "BufWriteCmd" }, {
         buffer = bufnr,
         callback = function(args)
-            update_tags(args.buf, blob, ui.db)
+            TagUtil.update_tags(args.buf, blob, ui.db)
             blob.content = get_content(args.buf)
             print("content in save", blob.content)
             blob:save(ui.db)
@@ -97,13 +85,11 @@ function M.setup(bufnr, blob, path)
     })
 
     vim.keymap.set("n", "-", function()
+        ui:save()
         local note = Note.get(blob.note_id, ui.db)
         ui.breadcrumbs = Present.create_breadcrumbs(vim.split(note.path, "/"),
             vim.split(note.path_ids, "/"))
-        print("breadcrumbs")
-        for k, v in pairs(ui.breadcrumbs) do
-            print(k, v[1], v[2])
-        end
+        ui.current_scope = note:get_scope(ui.settings)
         ui:load_current_directory()
         ui:toggle_finder()
     end, { buffer = bufnr, silent = true })
@@ -124,6 +110,13 @@ function M.setup(bufnr, blob, path)
     end
 
     vim.keymap.set("n", "<CR>", function()
+        local cursor = vim.api.nvim_win_get_cursor(0)
+        local line_num = cursor[1]
+        local line = vim.api.nvim_buf_get_lines(bufnr, line_num - 1, line_num, false)[1] or ""
+        if line_num == 3 and line:match("^Tags:") then
+            local tag_found_at_cursor = TagUtil.go_to_tag(bufnr, ui.settings.picker_theme)
+            if tag_found_at_cursor then return end
+        end
         LinkUtil.go_to_link()
     end, { buffer = bufnr, silent = true })
 

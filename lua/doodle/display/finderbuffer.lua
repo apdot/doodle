@@ -51,6 +51,17 @@ local function skip_concealed_id()
     end
 end
 
+---@param ui DoodleUI
+local function process_finder(ui, bufnr)
+    if ui.settings.auto_save then
+        local parsed = get_content(bufnr)
+        ui:update_finder(parsed)
+    else
+        ui:mark_all_processed()
+    end
+    ui:save()
+end
+
 ---@param bufnr integer
 function M.setup(bufnr)
     local ui = require("doodle")._ui
@@ -91,18 +102,15 @@ function M.setup(bufnr)
 
     vim.keymap.set("n", "<CR>", function()
         local parsed_line = get_line()
-        if not parsed_line or parsed_line.uuid == nil then
+        if not parsed_line or parsed_line.id == nil then
             vim.notify("Save buffer required")
             return
         end
+        local uuid = ui.idx_to_uuid[tonumber(parsed_line.id)]
         if parsed_line.directory then
-            if ui.settings.auto_save then
-                local parsed = get_content(bufnr)
-                ui:update_finder(parsed)
-            end
-            ui:save()
+            process_finder(ui, bufnr)
             vim.schedule(function()
-                table.insert(ui.breadcrumbs, { parsed_line.uuid, parsed_line.directory })
+                table.insert(ui.breadcrumbs, { uuid, parsed_line.directory })
                 ui:load_current_directory()
                 ui:render_finder()
             end)
@@ -110,18 +118,14 @@ function M.setup(bufnr)
             print("toggle finder CR")
             ui:toggle_finder()
             vim.schedule(function()
-                ui:open_note(parsed_line.uuid)
+                ui:open_note(uuid)
             end)
         end
     end, { buffer = bufnr, silent = true })
 
     vim.keymap.set("n", "-", function()
-        if ui.settings.auto_save then
-            local parsed = get_content(bufnr)
-            ui:update_finder(parsed)
-        end
+        process_finder(ui, bufnr)
         if #ui.breadcrumbs > 1 then
-            ui:save()
             table.remove(ui.breadcrumbs)
             ui:load_current_directory()
         end
@@ -129,12 +133,8 @@ function M.setup(bufnr)
     end, { buffer = bufnr, silent = true })
 
     vim.keymap.set("n", "_", function()
-        if ui.settings.auto_save then
-            local parsed = get_content(bufnr)
-            ui:update_finder(parsed)
-        end
+        process_finder(ui, bufnr)
         if #ui.breadcrumbs > 1 then
-            ui:save()
             ui.breadcrumbs = { ui.breadcrumbs[1] }
             ui:load_current_directory()
         end
@@ -144,11 +144,7 @@ function M.setup(bufnr)
     vim.keymap.set("n", "<TAB>", function()
         local new_scope = clamp_scope(ui.current_scope + 1)
         ui.current_scope = new_scope
-        if ui.settings.auto_save then
-            local parsed = get_content(bufnr)
-            ui:update_finder(parsed)
-            ui:save()
-        end
+        process_finder(ui, bufnr)
         ui:init()
         ui:render_finder()
     end, { buffer = bufnr, silent = true })
@@ -156,30 +152,18 @@ function M.setup(bufnr)
     vim.keymap.set("n", "<S-TAB>", function()
         local new_scope = clamp_scope(ui.current_scope - 1)
         ui.current_scope = new_scope
-        if ui.settings.auto_save then
-            local parsed = get_content(bufnr)
-            ui:update_finder(parsed)
-            ui:save()
-        end
+        process_finder(ui, bufnr)
         ui:init()
         ui:render_finder()
     end, { buffer = bufnr, silent = true })
 
     vim.keymap.set("n", "q", function()
-        if ui.settings.auto_save then
-            local parsed = get_content(bufnr)
-            ui:update_finder(parsed)
-            ui:save()
-        end
+        process_finder(ui, bufnr)
         ui:toggle_finder()
     end, { buffer = bufnr, silent = true })
 
     vim.keymap.set("n", "<ESC>", function()
-        if ui.settings.auto_save then
-            local parsed = get_content(bufnr)
-            ui:update_finder(parsed)
-            ui:save()
-        end
+        process_finder(ui, bufnr)
         ui:toggle_finder()
     end, { buffer = bufnr, silent = true })
 

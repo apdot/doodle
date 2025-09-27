@@ -1,28 +1,34 @@
+local Static = require("doodle.static")
+
 local Present = {}
 
 local ID = "@@@"
 
 ---@param notes { [string]: DoodleNote }
 ---@param directories { [string]: DoodleDirectory }
+---@param uuid_to_id table<string, integer>
 ---@return string[]
-function Present.get_finder_content(notes, directories)
+function Present.get_finder_content(notes, directories, uuid_to_id)
     local display = {}
 
     table.insert(display, "")
 
     if notes then
-        for id, note in pairs(notes) do
+        for _, note in pairs(notes) do
             if note.status ~= 2 then
-                -- print("note id", ID .. "N" .. id .. " " .. note.title)
-                table.insert(display, ID .. "N" .. id .. " " .. note.title)
+                local id = uuid_to_id[note.uuid]
+                table.insert(display,
+                    ("%sN%s %s %s"):format(ID, id, Static.FILE, note.title))
                 note.status = 0
             end
         end
     end
     if directories then
-        for id, directory in pairs(directories) do
+        for _, directory in pairs(directories) do
             if directory.status ~= 2 then
-                table.insert(display, ID .. "D" .. id .. " " .. directory.name .. "/")
+                local id = uuid_to_id[directory.uuid]
+                table.insert(display,
+                    ("%sD%s %s %s"):format(ID, id, Static.DIRECTORY, directory.name))
                 directory.status = 0
             end
         end
@@ -100,13 +106,12 @@ end
 ---@param labels string[]
 ---@return string[]
 function Present.get_labels(labels)
-    local icon = " "
     local display = {}
 
     table.insert(display, "")
 
     for _, label in pairs(labels) do
-        table.insert(display, icon .. label)
+        table.insert(display, Static.FILE .. " " .. label)
     end
 
     return display
@@ -139,7 +144,7 @@ function Present.get_links(adjacency)
     local display = {}
     table.insert(display, "")
 
-    table.insert(display, "# Outgoing: ()")
+    table.insert(display, ("# Outgoing: (%s)"):format(Static.OUTGOING))
     local outgoing = adjacency.outgoing
     if outgoing and #outgoing > 0 then
         for _, note_data in pairs(outgoing) do
@@ -150,7 +155,7 @@ function Present.get_links(adjacency)
 
     table.insert(display, "")
 
-    table.insert(display, "# Incoming: ()")
+    table.insert(display, ("# Incoming: (%s)"):format(Static.INCOMING))
     local incoming = adjacency.incoming
     if incoming and #incoming > 0 then
         for _, note_data in pairs(incoming) do
