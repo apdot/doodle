@@ -51,6 +51,7 @@ function DoodleDB:ensure_schema()
             title      TEXT,
             path       TEXT,
             path_ids   TEXT,
+            template   BOOLEAN DEFAULT 0,
             created_at INTEGER,
             updated_at INTEGER,
             synced_at  INTEGER,
@@ -140,29 +141,24 @@ end
 ---@return DoodleNote[]
 ---@return DoodleDirectory[]
 function DoodleDB:load_finder(parent)
-    -- print("load_finder", parent)
-    local notes = self._conn:select("note", {
-        where = {
-            parent = parent,
-            status = "<" .. 2
-        },
-        order_by = { asc = { "title", "created_at" } }
-    })
-
-    for k, note in pairs(notes) do
-        -- print("notes fetched", note.uuid, note.project, note.branch, note.title, note.created_at, note.updated_at)
+    local notes_sql = ([[
+    SELECT * FROM note
+    WHERE parent = '%s' AND status < 2 AND template != 1
+    ORDER BY title ASC, created_at ASC;
+    ]]):format(parent)
+    local notes = self._conn:eval(notes_sql)
+    if not notes or type(notes) == "boolean" or #notes == 0 then
+        notes = {}
     end
 
-    local directories = self._conn:select("directory", {
-        where = {
-            parent = parent,
-            status = "<" .. 2
-        },
-        order_by = { asc = { "name", "created_at" } }
-    })
-
-    for k, dir in pairs(directories) do
-        -- print(dir.uuid, dir.project, dir.branch, dir.name, dir.created_at, dir.updated_at)
+    local dirs_sql = ([[
+    SELECT * FROM directory 
+    WHERE parent = '%s' AND status < 2 
+    ORDER BY name ASC, created_at ASC;
+    ]]):format(parent)
+    local directories = self._conn:eval(dirs_sql)
+    if not directories or type(directories) == "boolean" or #directories == 0 then
+        directories = {}
     end
 
     return DoodleNote.from_list(notes) or {}, DoodleDirectory.from_list(directories) or {}
@@ -173,6 +169,24 @@ end
 ---@return table
 function DoodleDB:get_all(table_name, field)
     local res = self._conn:select(table_name, {
+        order_by = { asc = field }
+    })
+
+    if not res or #res == 0 then
+        return {}
+    end
+
+    return res
+end
+
+---@param field string
+---@return table
+function DoodleDB:get_templates(field)
+    local res = self._conn:select("note", {
+        where = {
+            template = 1,
+            status = "<" .. 2
+        },
         order_by = { asc = field }
     })
 
@@ -252,8 +266,8 @@ end
 ---@return string
 function DoodleDB:create_note(note)
     local sql = [[
-    INSERT INTO note (uuid, project, branch, title, parent, path, path_ids, created_at, updated_at)
-    VALUES (:uuid, :project, :branch, :title, :parent, :path, :path_ids, :created_at, :updated_at);
+    INSERT INTO note (uuid, project, branch, title, parent, path, template, path_ids, created_at, updated_at)
+    VALUES (:uuid, :project, :branch, :title, :parent, :path, :template, :path_ids, :created_at, :updated_at);
     ]]
 
     local uuid = note.uuid and note.uuid or SyncUtil.uuid()
@@ -264,6 +278,7 @@ function DoodleDB:create_note(note)
         title = note.title,
         parent = note.parent,
         path = note.path,
+        template = note.template or 0,
         path_ids = note.path_ids,
         created_at = DBUtil.now(),
         updated_at = DBUtil.now(),
@@ -649,8 +664,7 @@ function DoodleDB:create_root_if_not_exists(root, branch)
             path_ids = root_dir.uuid,
             branch = branch,
             parent = root_dir.uuid,
-            title = "Quick Note",
-            -- uuid = SyncUtil.hash(root_dir.uuid .. "Quick Note")
+            title = "Quick Note"
         }, self)
 
         return root_dir.uuid

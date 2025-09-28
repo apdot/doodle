@@ -44,4 +44,11 @@ function M.sort_note_or_directories(items)
     return items
 end
 
+---@param bufnr integer
+---@return string
+function M.get_content(bufnr)
+    local lines = vim.api.nvim_buf_get_lines(bufnr, 3, -1, false)
+    return table.concat(lines, "\n")
+end
+
 return M

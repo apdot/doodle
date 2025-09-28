@@ -3,6 +3,9 @@ local DoodleUI = require("doodle.ui")
 local DoodleDB = require("doodle.storage.db")
 local DoodleSync = require("doodle.sync.sync")
 local Completion = require("doodle.tags.completion")
+local DoodleNote = require("doodle.note")
+local DoodleBlob = require("doodle.blob")
+local FormatUtil = require("doodle.utils.format_util")
 
 ---@class Doodle
 ---@field config DoodleConfig
@@ -53,6 +56,11 @@ end
 
 function Doodle:here()
     self._ui:here()
+end
+
+---@param opts table
+function Doodle:create_template(opts)
+    self._ui:create_template(opts)
 end
 
 function Doodle.find_notes()
@@ -121,6 +129,16 @@ function Doodle.setup(self, partial_config)
         Doodle.find_notes, {
             desc = "Find a doodle note with Telescope"
         })
+
+    vim.api.nvim_create_user_command(
+        'DoodleCreateTemplate',
+        function(opts)
+            doodle:create_template(opts)
+        end,
+        {
+            nargs = 1
+        }
+    )
 
     return self
 end

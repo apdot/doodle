@@ -19,11 +19,13 @@ local help_keymaps = {
     { key = "<C-g>", description = "Switch scope to Global" },
     { key = "<C-e>", description = "Switch scope to All" },
     { key = "<C-f>", description = "Switch to find files" },
-    { key = "<C-l>", description = "Add link to the selected note" },
+    { key = "<C-y>", description = "Switch to find templates" },
+    { key = "<C-l>", description = "Add link to the selected note" }
 }
 
 local find_notes
 local find_files
+local find_templates
 
 local function map_scope_switches(map, prompt_bufnr, opts)
     local function switch_scope(scope)
@@ -70,7 +72,8 @@ local function make_display(entry)
 end
 
 local function make_ordinal(entry)
-    return entry.tags .. make_display(entry)
+    local tags = entry.tags or ""
+    return tags .. make_display(entry)
 end
 
 local function generate_finder(notes)
@@ -122,9 +125,49 @@ find_files = function(opts)
                     add_link(vim.fn.fnamemodify(selection.value, ":t"), selection.value, false)
                 end)
             end)
+            ff_map({ "i", "n" }, "<C-y>", function()
+                actions.close(ff_prompt_bufnr)
+                vim.schedule(function()
+                    find_templates(opts)
+                end)
+            end)
             return true
         end
     })
+end
+
+find_templates = function(opts)
+    opts = opts or {}
+    local ui = require("doodle")._ui
+
+    local template_notes = DoodleNote.get_templates(ui.db)
+
+    local previewer = create_previewer(ui)
+    opts.previewer = opts.previewer or previewer
+
+    pickers.new(opts, {
+        prompt_title = "Doodle Templates",
+        finder = generate_finder(template_notes),
+        sorter = conf.generic_sorter(),
+        attach_mappings = function(ft_prompt_bufnr, ft_map)
+            map_scope_switches(ft_map, ft_prompt_bufnr, opts)
+            actions.select_default:replace(function()
+                actions.close(ft_prompt_bufnr)
+                local selection = action_state.get_selected_entry()
+                local blob = DoodleBlob.get(selection.value.uuid, ui.db)
+                local content = vim.split(blob.content, "\n", { plain = true }) or {}
+                local pos = vim.api.nvim_win_get_cursor(0)
+                vim.api.nvim_buf_set_text(0, pos[1] - 1, pos[2], pos[1] - 1, pos[2], content)
+            end)
+            ft_map({ "i", "n" }, "<C-f>", function()
+                actions.close(ft_prompt_bufnr)
+                vim.schedule(function()
+                    find_files(opts)
+                end)
+            end)
+            return true
+        end,
+    }):find()
 end
 
 find_notes = function(opts)
@@ -188,9 +231,19 @@ find_notes = function(opts)
                     find_files(opts)
                 end)
             end)
+            map({ "i", "n" }, "<C-y>", function()
+                actions.close(prompt_bufnr)
+                vim.schedule(function()
+                    find_templates(opts)
+                end)
+            end)
             return true
         end
     }):find()
 end
 
-return { find_notes = find_notes, find_files = find_files }
+return {
+    find_notes = find_notes,
+    find_files = find_files,
+    find_templates = find_templates
+}
