@@ -50,7 +50,7 @@ function DoodleNote:new(dict)
         status = dict["status"],
         path = dict["path"],
         path_ids = dict["path_ids"],
-        template = dict["template"],
+        template = dict["template"] or 0,
         created_at = dict["created_at"],
         updated_at = dict["updated_at"],
         synced_at = dict["synced_at"]
@@ -183,6 +183,7 @@ end
 function DoodleNote.bulk_upsert(dict, where, db)
     local values_dict = {}
     for _, note in pairs(dict) do
+        print("bulk_upsert", note.title, note.template)
         table.insert(values_dict, DBUtil.format_values({
             note.uuid,
             note.project,
