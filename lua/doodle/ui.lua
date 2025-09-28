@@ -407,8 +407,6 @@ function DoodleUI:render_links(bufnr)
     LinkBuffer.setup_right(self.link_bufnr.right)
 
     View.place_cursor(self.link_bufnr.left, self.link_win_id.left, self.link_idx + 2)
-
-    -- FinderBuffer.setup(self.bufnr)
 end
 
 function DoodleUI:toggle_links()

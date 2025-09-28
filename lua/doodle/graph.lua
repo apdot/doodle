@@ -5,15 +5,17 @@ local M = {}
 
 ---@param db DoodleDB
 function M.build(db)
-    local graph = { labels = {}, notes ={}, note_idx = {}, note_map = {}, adjacency = {} }
+    local graph = { labels = {}, notes = {}, note_idx = {}, note_map = {}, adjacency = {} }
 
     local notes = Note.get_all(db)
     for k, note in pairs(notes) do
-        table.insert(graph.notes, note)
-        graph.note_map[note.uuid] = note
-        graph.note_idx[note.uuid] = k
-        table.insert(graph.labels, note.path .. "/" .. note.title)
-        graph.adjacency[note.uuid] = { outgoing = {}, incoming = {} }
+        if note.template ~= 1 then
+            table.insert(graph.notes, note)
+            graph.note_map[note.uuid] = note
+            graph.note_idx[note.uuid] = k
+            table.insert(graph.labels, note.path .. "/" .. note.title)
+            graph.adjacency[note.uuid] = { outgoing = {}, incoming = {} }
+        end
     end
 
     local links = Link.get_all(db)
