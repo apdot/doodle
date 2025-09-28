@@ -217,7 +217,8 @@ function DoodleUI:update_finder(parsed)
 end
 
 function DoodleUI:load_current_directory()
-    self.display_notes, self.display_directories = self.db:load_finder(self.breadcrumbs[#self.breadcrumbs][1])
+    self.display_notes, self.display_directories =
+        self.db:load_finder(self.breadcrumbs[#self.breadcrumbs][1])
     self.notes, self.directories = {}, {}
     for _, note in ipairs(self.display_notes) do
         note.status = 1
@@ -411,12 +412,6 @@ function DoodleUI:render_links(bufnr)
 end
 
 function DoodleUI:toggle_links()
-    -- if self.link_win_id ~= nil then
-    --     View.close(self.link_bufnr.left, self.link_win_id.left)
-    --     View.close(self.link_bufnr.right, self.link_win_id.right)
-    --     self.link_bufnr, self.link_win_id = nil, nil
-    --     return
-    -- end
     local current_bufnr = vim.api.nvim_get_current_buf()
     self.link_bufnr, self.link_win_id = View.create_links_window()
 
@@ -475,6 +470,24 @@ function DoodleUI:here()
     }, self.db)
 
     self:open_note(note.uuid)
+end
+
+---@param opts table
+function DoodleUI:create_template(opts)
+    local bufnr = vim.api.nvim_get_current_buf()
+    local note_title = "Untitled"
+    if opts.args and vim.fn.trim(opts.args) ~= "" then
+        note_title = opts.args
+    end
+    local template_note = DoodleNote.create({
+        title = note_title,
+        path = "template",
+        template = 1
+    }, self.db)
+    DoodleBlob.create({
+        note_id = template_note.uuid,
+        content = FormatUtil.get_content(bufnr)
+    }, self.db)
 end
 
 return DoodleUI

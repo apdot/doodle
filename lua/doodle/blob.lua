@@ -119,6 +119,7 @@ function DoodleBlob.bulk_upsert(dict, where, db)
             blob.uuid,
             blob.note_id,
             blob.content,
+            blob.template,
             blob.created_at or DBUtil.now(),
             blob.updated_at or DBUtil.now(),
             blob.synced_at or vim.NIL

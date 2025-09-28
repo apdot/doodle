@@ -11,6 +11,7 @@ local NoteTag = require("doodle.tags.note_tag")
 ---@field path string
 ---@field path_ids string
 ---@field uuid string
+---@field template boolean
 ---@field created_at integer
 ---@field updated_at integer
 ---@field synced_at integer
@@ -30,6 +31,7 @@ local columns = {
     "status",
     "path",
     "path_ids",
+    "template",
     "created_at",
     "updated_at",
     "synced_at"
@@ -48,6 +50,7 @@ function DoodleNote:new(dict)
         status = dict["status"],
         path = dict["path"],
         path_ids = dict["path_ids"],
+        template = dict["template"],
         created_at = dict["created_at"],
         updated_at = dict["updated_at"],
         synced_at = dict["synced_at"]
@@ -76,7 +79,9 @@ function DoodleNote.create(dict, db)
     note.uuid = uuid
     note.status = 1
 
-    NoteTag.bulk_map(vim.split(note.path, "/"), { note.uuid }, db)
+    if note.path ~= nil then
+        NoteTag.bulk_map(vim.split(note.path, "/"), { note.uuid }, db)
+    end
 
     return note
 end
@@ -127,8 +132,16 @@ function DoodleNote.get_all_with_tags(db, dict)
         where = where .. " AND "
     end
 
-    where = where .. "note.status < 2"
+    where = where .. "note.status < 2 AND note.template != 1"
     return db:get_all_notes_with_tags(where)
+end
+
+---@param db DoodleDB
+---@return DoodleNote[]
+function DoodleNote.get_templates(db)
+    local templates = db:get_templates("title")
+
+    return DoodleNote.from_list(templates)
 end
 
 ---@param settings DoodleSettings
@@ -179,6 +192,7 @@ function DoodleNote.bulk_upsert(dict, where, db)
             note.status,
             note.path,
             note.path_ids,
+            note.template,
             note.created_at or DBUtil.now(),
             note.updated_at or DBUtil.now(),
             note.synced_at or vim.NIL
