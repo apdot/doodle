@@ -81,6 +81,7 @@ function DoodleUI:mark_deleted()
     for _, directory in pairs(self.directories) do
         if directory.status ~= 1 then
             directory.status = 2
+            self.db:delete_directory(directory.uuid)
         end
     end
 end
