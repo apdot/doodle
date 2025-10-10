@@ -13,7 +13,7 @@ function M.parse_finder_line(line)
         rest = line
     end
     parsed_line.id = id
- 
+
     rest = rest:gsub("(" .. Static.FILE .. ")%s", ""):gsub("(" .. Static.DIRECTORY .. ")%s+", "")
 
     local path = {}

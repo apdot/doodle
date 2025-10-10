@@ -4,10 +4,11 @@ local Link = require("doodle.link")
 local M = {}
 
 ---@param db DoodleDB
+---@return  { labels: {}, notes: {}, note_idx: {}, note_map: {}, adjacency: { outgoing: {}, incoming: {} } }
 function M.build(db)
-    local graph = { labels = {}, notes = {}, note_idx = {}, note_map = {}, adjacency = {} }
+    local graph = { labels = {}, notes = {}, note_idx = {}, note_map = {}, adjacency = { outgoing = {}, incoming = {} } }
 
-    local notes = Note.get_all(db)
+    local notes = Note.get_all_with_status(1, db)
     for k, note in pairs(notes) do
         if note.template ~= 1 then
             table.insert(graph.notes, note)

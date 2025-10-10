@@ -63,6 +63,10 @@ function Doodle:create_template(opts)
     self._ui:create_template(opts)
 end
 
+function Doodle:graph_view()
+    self._ui:graph_view()
+end
+
 function Doodle.find_notes()
     require("telescope._extensions.find")()
 end
@@ -135,9 +139,15 @@ function Doodle.setup(self, partial_config)
         function(opts)
             doodle:create_template(opts)
         end,
-        {
-            nargs = 1
-        }
+        { nargs = 1 }
+    )
+
+    vim.api.nvim_create_user_command(
+        'DoodleGraphView',
+        function(opts)
+            doodle:graph_view(opts)
+        end,
+        { nargs = 0 }
     )
 
     return self

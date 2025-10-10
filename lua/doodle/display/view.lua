@@ -6,6 +6,47 @@ local View = {}
 local scopes = { "Project", "Branch", "Global" }
 local ns = vim.api.nvim_create_namespace("doodle_ns")
 
+
+function View.plot_text(canvas, width, x, y, text)
+    local row = math.floor(y)
+    local line = canvas[row]
+    if not line then return end
+    local text_width = #text
+    local start_col = math.max(1, math.floor(x - text_width / 2))
+    local end_col = start_col + text_width
+    if end_col > width then start_col = width - text_width + 1 end
+    canvas[row] = line:sub(1, start_col - 1) .. text .. line:sub(start_col + text_width)
+end
+
+function View.draw_line(canvas, width, height, x1, y1, x2, y2)
+    x1, y1, x2, y2 = math.floor(x1), math.floor(y1), math.floor(x2), math.floor(y2)
+    local dx = math.abs(x2 - x1)
+    local dy = -math.abs(y2 - y1)
+    local sx = (x1 < x2) and 1 or -1
+    local sy = (y1 < y2) and 1 or -1
+    local err = dx + dy
+
+    while true do
+        if y1 >= 1 and y1 <= height and x1 >= 1 and x1 <= width then
+            local line = canvas[y1]
+            -- Only draw on empty spaces to avoid overwriting titles
+            if line:sub(x1, x1) == " " then
+                canvas[y1] = line:sub(1, x1 - 1) .. "." .. line:sub(x1 + 1)
+            end
+        end
+        if x1 == x2 and y1 == y2 then break end
+        local e2 = 2 * err
+        if e2 >= dy then
+            err = err + dy
+            x1 = x1 + sx
+        end
+        if e2 <= dx then
+            err = err + dx
+            y1 = y1 + sy
+        end
+    end
+end
+
 ---@param bufnr integer
 ---@param win_id integer
 ---@param line integer
@@ -110,10 +151,10 @@ end
 ---@param content string[]
 local function render_content(bufnr, content)
     vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr })
-    print("content", content)
-    for k, v in pairs(content) do
-        print(k, v)
-    end
+    -- print("content", content)
+    -- for k, v in pairs(content) do
+    --     print(k, v)
+    -- end
     vim.api.nvim_buf_set_lines(bufnr, 1, -1, false, content)
 end
 
@@ -170,7 +211,6 @@ function View.metadata_line(blob, title, path, note_links)
     table.insert(virt_text, { (" %s: "):format(Static.INCOMING), "Comment" })
     table.insert(virt_text, { note_links.incoming .. " ", "PreProc" })
 
-    print("notelinks in view", note_links.outgoing, note_links.incoming)
     return virt_text
 end
 

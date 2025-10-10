@@ -152,8 +152,8 @@ function DoodleDB:load_finder(parent)
     end
 
     local dirs_sql = ([[
-    SELECT * FROM directory 
-    WHERE parent = '%s' AND status < 2 
+    SELECT * FROM directory
+    WHERE parent = '%s' AND status < 2
     ORDER BY name ASC, created_at ASC;
     ]]):format(parent)
     local directories = self._conn:eval(dirs_sql)
@@ -169,6 +169,23 @@ end
 ---@return table
 function DoodleDB:get_all(table_name, field)
     local res = self._conn:select(table_name, {
+        order_by = { asc = field }
+    })
+
+    if not res or #res == 0 then
+        return {}
+    end
+
+    return res
+end
+
+---@param table_name string
+---@param status integer
+---@param field string
+---@return table
+function DoodleDB:get_all_with_status(table_name, status, field)
+    local res = self._conn:select(table_name, {
+        where = { status = status },
         order_by = { asc = field }
     })
 
@@ -271,6 +288,7 @@ function DoodleDB:create_note(note)
     ]]
 
     local uuid = note.uuid and note.uuid or SyncUtil.uuid()
+    print("note title in create", note.title)
     self._conn:eval(sql, DBUtil.dict({
         uuid = uuid,
         project = note.project,
