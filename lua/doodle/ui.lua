@@ -332,7 +332,8 @@ function DoodleUI:toggle_finder()
         return
     end
 
-    local bufnr, win_id = View.create_finder_window(0.4, 0.5)
+    local bufnr, win_id = View.create_finder_window(self.settings.finder_height_factor,
+        self.settings.finder_width_factor)
 
     if not win_id then
         return

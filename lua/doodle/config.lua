@@ -10,6 +10,8 @@ local Job = require("plenary.job")
 ---@field project fun(): string
 ---@field branch fun(): string
 ---@field global fun(): string
+---@field finder_height_factor number
+---@field finder_width_factor number
 
 ---@class DoodleHandlers
 ---@field encode fun(obj:any): string
@@ -26,8 +28,9 @@ function DoodleConfig.get_default()
     local settings = {
         auto_save = false,
         sync = true,
-        git_repo = "/Users/anirudh/.local/share/nvim/doodle/doodle-sync",
         hide_hint = false,
+        finder_height_factor = 0.4,
+        finder_width_factor = 0.5,
         project = function()
             return vim.fs.basename(vim.loop.cwd())
         end,
