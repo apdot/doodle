@@ -280,7 +280,8 @@ function DoodleSync:push()
     local now = DBUtil.now()
 
     local oplog, file_path
-    local should_create_snapshot = self.handlers.snapshot_condition(self.config)
+    local should_create_snapshot = self.handlers.snapshot_condition(self.config,
+        self.settings.git_repo)
     if should_create_snapshot then
         print("creating snap")
         oplog, file_path = self:create_snapshot()

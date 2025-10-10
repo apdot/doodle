@@ -16,7 +16,7 @@ local Job = require("plenary.job")
 ---@class DoodleHandlers
 ---@field encode fun(obj:any): string
 ---@field decode fun(obj:string): string
----@field snapshot_condition fun(obj:SyncConfig): boolean
+---@field snapshot_condition fun(obj:SyncConfig, obj:string): boolean
 
 ---@class DoodleConfig
 ---@field settings DoodleSettings
@@ -53,8 +53,8 @@ function DoodleConfig.get_default()
             return vim.json.decode(str)
         end,
 
-        snapshot_condition = function(sync_config)
-            local files_in_repo = ScanDir.scan_dir(settings.git_repo, { add_dirs = false })
+        snapshot_condition = function(sync_config, git_repo)
+            local files_in_repo = ScanDir.scan_dir(git_repo, { add_dirs = false })
 
             local snapshot, _ = FileUtil.find_snapshot(files_in_repo)
             if not snapshot or sync_config.bytes > 1024 * 1024 then

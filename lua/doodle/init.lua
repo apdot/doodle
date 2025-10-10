@@ -3,9 +3,6 @@ local DoodleUI = require("doodle.ui")
 local DoodleDB = require("doodle.storage.db")
 local DoodleSync = require("doodle.sync.sync")
 local Completion = require("doodle.tags.completion")
-local DoodleNote = require("doodle.note")
-local DoodleBlob = require("doodle.blob")
-local FormatUtil = require("doodle.utils.format_util")
 
 ---@class Doodle
 ---@field config DoodleConfig
@@ -84,7 +81,6 @@ function Doodle.setup(self, partial_config)
 
     ---@diagnostic disable-next-line: param-type-mismatch
     self.config = DoodleConfig.merge_config(partial_config, self.config)
-    print("after hh", self.config.settings.hide_hint)
     self._db:setup()
     self._ui = DoodleUI:new(self.config.settings, self._db)
     self._sync = DoodleSync:new(self.config.settings, self.config.operations, self._db)
