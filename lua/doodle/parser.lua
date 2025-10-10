@@ -1,4 +1,5 @@
 local FormatUtil = require("doodle.utils.format_util")
+local Static = require("doodle.static")
 
 local M = {}
 
@@ -13,7 +14,7 @@ function M.parse_finder_line(line)
     end
     parsed_line.id = id
 
-    rest = FormatUtil.trim(rest):gsub("^%S+%s+", "")
+    rest = rest:gsub("(" .. Static.FILE .. ")%s", ""):gsub("(" .. Static.DIRECTORY .. ")%s+", "")
 
     local path = {}
     for part in rest:gmatch("[^/]+") do

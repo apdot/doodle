@@ -50,7 +50,7 @@ function DoodleNote:new(dict)
         status = dict["status"],
         path = dict["path"],
         path_ids = dict["path_ids"],
-        template = dict["template"],
+        template = dict["template"] or 0,
         created_at = dict["created_at"],
         updated_at = dict["updated_at"],
         synced_at = dict["synced_at"]
@@ -119,6 +119,15 @@ end
 ---@return DoodleNote[]
 function DoodleNote.get_all(db)
     local notes = db:get_all(table_name, "title")
+
+    return DoodleNote.from_list(notes)
+end
+
+---@param status integer
+---@param db DoodleDB
+---@return DoodleNote[]
+function DoodleNote.get_all_with_status(status, db)
+    local notes = db:get_all_with_status(table_name, status, "title")
 
     return DoodleNote.from_list(notes)
 end

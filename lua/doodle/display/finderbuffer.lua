@@ -1,5 +1,4 @@
 local Parser = require("doodle.parser")
-local DoodleBlob = require("doodle.blob")
 local Help = require("doodle.display.help")
 
 local M = {}

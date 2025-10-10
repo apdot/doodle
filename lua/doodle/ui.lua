@@ -25,7 +25,7 @@ local Graph = require("doodle.graph")
 ---@field link_win_id { left: integer, right: integer }
 ---@field link_bufnr {left: integer, right: integer }
 ---@field link_idx integer
----@field graph table
+---@field graph { labels: {}, notes: {}, note_idx: {}, note_map: {}, adjacency: { outgoing: {}, incoming: {} } }
 ---@field open_notes table<integer, { win_id: integer, title: string, id: string, blob: DoodleBlob }>
 ---@field current_scope integer
 ---@field uuid_to_idx table<string, integer>
@@ -60,6 +60,7 @@ function DoodleUI:new(settings, db)
         open_notes = {},
         uuid_to_idx = {},
         idx_to_uuid = {},
+        link_idx = 1,
         db = db,
         settings = settings
     }, self)
@@ -81,6 +82,7 @@ function DoodleUI:mark_deleted()
     for _, directory in pairs(self.directories) do
         if directory.status ~= 1 then
             directory.status = 2
+            self.db:delete_directory(directory.uuid)
         end
     end
 end
@@ -486,6 +488,156 @@ function DoodleUI:create_template(opts)
         note_id = template_note.uuid,
         content = FormatUtil.get_content(bufnr)
     }, self.db)
+end
+
+function DoodleUI:render_graph(height, width, bufnr, win_id)
+    -- 6. Render the final graph
+    local canvas = {}
+    for i = 1, height do canvas[i] = string.rep(" ", width) end
+
+    -- Draw edges first (background)
+    for source_id, connections in pairs(self.graph.adjacency) do
+        local node1 = self.graph.note_map[source_id]
+        if node1 then
+            for _, target in ipairs(connections.outgoing) do
+                local node2 = self.graph.note_map[target.note.uuid]
+                if node2 and (node1.uuid < node2.uuid) then
+                    View.draw_line(canvas, width, height, node1.x, node1.y, node2.x, node2.y)
+                end
+            end
+        end
+    end
+
+    for _, node in ipairs(self.graph.notes) do
+        -- print("final positions", node.title, node.x, node.y)
+        View.plot_text(canvas, width, node.x, node.y, node.title)
+    end
+
+    vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr })
+    vim.api.nvim_set_option_value("modifiable", false, { buf = bufnr })
+
+    View.render(bufnr, win_id, canvas,
+        { { " Graph View", "Keyword" } }, { "Graph" })
+end
+
+function DoodleUI:apply_forces(height, width)
+    local gravity_constant = 0.001
+    local repulsion_constant = 1.2
+    local attraction_constant = 0.009
+    local damping_constant = 0.90
+    local resting_length = 2
+    local max_velocity = 2
+
+    -- apply repulsive force between nodes
+    for i = 1, #self.graph.notes do
+        local n1 = self.graph.notes[i]
+        for j = i + 1, #self.graph.notes do
+            local n2 = self.graph.notes[j]
+
+            local dx, dy = n1.x - n2.x, n1.y - n2.y
+            local dist_sq = dx * dx + dy * dy
+            if dist_sq < 0.01 then dist_sq = 0.01 end
+            local dist = math.sqrt(dist_sq)
+
+            local force = repulsion_constant / dist_sq
+            local fx, fy = (dx / dist) * force, (dy / dist) * force
+
+            n1.vx = n1.vx + fx
+            n1.vy = n1.vy + fy
+            n2.vx = n2.vx - fx
+            n2.vy = n2.vy - fy
+        end
+    end
+
+    -- apply attractive force exerted by connections
+    for source_id, connections in pairs(self.graph.adjacency) do
+        local n1 = self.graph.note_map[source_id]
+        if n1 then
+            for _, target in ipairs(connections.outgoing) do
+                local n2 = self.graph.note_map[target.note.uuid]
+                if n2 then
+                    local dx, dy = n1.x - n2.x, n1.y - n2.y
+                    local fx, fy = (dx - resting_length) * attraction_constant,
+                        (dy - resting_length) * attraction_constant
+
+                    n1.vx = n1.vx - fx
+                    n1.vy = n1.vy - fy
+                    n2.vx = n2.vx + fx
+                    n2.vy = n2.vy + fy
+                end
+            end
+        end
+    end
+
+    -- apply gravity force toward center
+    local cx, cy = width / 2, height / 2
+    for _, node in ipairs(self.graph.notes) do
+        local dx, dy = cx - node.x, cy - node.y
+        node.vx = node.vx + dx * gravity_constant
+        node.vy = node.vy + dy * gravity_constant
+    end
+
+    for _, node in ipairs(self.graph.notes) do
+        node.vx = node.vx * damping_constant / math.sqrt(node.mass)
+        node.vy = node.vy * damping_constant / math.sqrt(node.mass)
+
+        local speed = math.sqrt(node.vx * node.vx + node.vy * node.vy)
+        if speed > max_velocity then
+            node.vx = node.vx / speed * max_velocity
+            node.vy = node.vy / speed * max_velocity
+        end
+
+        node.x = node.x + node.vx
+        node.y = node.y + node.vy
+
+        node.x = math.max(1, math.min(width - 1, node.x))
+        node.y = math.max(3, math.min(height - 1, node.y))
+    end
+end
+
+function DoodleUI:start_animation(height, width, bufnr, win_id, iterations, delay)
+    local frame = 1
+
+    local function step()
+        if frame > iterations then
+            self:render_graph(height, width, bufnr, win_id)
+            return
+        end
+
+        self:apply_forces(height, width)
+        self:render_graph(height, width, bufnr, win_id)
+
+        frame = frame + 1
+        vim.defer_fn(step, delay)
+    end
+
+    step()
+end
+
+function DoodleUI:graph_view()
+    if not self.graph then self.graph = Graph.build(self.db) end
+    if not self.graph or #self.graph.notes == 0 then
+        vim.notify("No notes found to graph.", vim.log.levels.WARN)
+        return
+    end
+
+    local bufnr, win_id = View.create_window()
+    vim.api.nvim_set_option_value("number", false, { win = win_id })
+    vim.api.nvim_set_option_value("wrap", false, { win = win_id })
+    vim.api.nvim_set_option_value("cursorline", false, { win = win_id })
+
+    local width = vim.api.nvim_win_get_width(win_id)
+    local height = vim.api.nvim_win_get_height(win_id)
+    for _, node in ipairs(self.graph.notes) do
+        node.x, node.y = math.random(1, width - 1), math.random(3,
+            height - 1)
+        node.vx, node.vy = 0, 0
+        local degree = #self.graph.adjacency[node.uuid].incoming or 0
+            + #self.graph.adjacency[node.uuid].outgoing or 0
+        node.mass = degree + 1
+    end
+
+    self:start_animation(height, width, bufnr, win_id, 250, 15)
 end
 
 return DoodleUI
