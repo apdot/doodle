@@ -67,4 +67,24 @@ function DoodleConfig.get_default()
     }
 end
 
+---@param partial_config DoodleConfig?
+---@param latest_config DoodleConfig?
+---@return DoodleConfig
+function DoodleConfig.merge_config(partial_config, latest_config)
+    partial_config = partial_config or {}
+    local config = latest_config or DoodleConfig.get_default_config()
+
+    for k, v in pairs(partial_config) do
+        if k == "settings" then
+            config.settings = vim.tbl_extend("force", config.settings, v)
+        elseif k == "operations" then
+            config.operations = vim.tbl_extend("force", config.operations, v)
+        else
+            config[k] = vim.tbl_extend("force", config[k] or {}, v)
+        end
+    end
+
+    return config
+end
+
 return DoodleConfig

@@ -24,8 +24,6 @@ function Doodle:new()
     local doodle = setmetatable({
         config = config,
         _db = db,
-        _ui = DoodleUI:new(config.settings, db),
-        _sync = DoodleSync:new(config.settings, config.operations, db),
         completion = Completion,
         hooks_setup = false
     }, self)
@@ -84,13 +82,17 @@ function Doodle.setup(self, partial_config)
         self = doodle
     end
 
+    ---@diagnostic disable-next-line: param-type-mismatch
+    self.config = DoodleConfig.merge_config(partial_config, self.config)
+    print("after hh", self.config.settings.hide_hint)
     self._db:setup()
+    self._ui = DoodleUI:new(self.config.settings, self._db)
+    self._sync = DoodleSync:new(self.config.settings, self.config.operations, self._db)
 
     if not self.hooks_setup then
         vim.api.nvim_create_autocmd({ "VimLeavePre" }, {
             callback = function()
                 self:save()
-                -- self.db:garbage_collect()
             end
         })
         self.hooks_setup = true
@@ -144,8 +146,8 @@ function Doodle.setup(self, partial_config)
 
     vim.api.nvim_create_user_command(
         'DoodleGraphView',
-        function(opts)
-            doodle:graph_view(opts)
+        function()
+            doodle:graph_view()
         end,
         { nargs = 0 }
     )
