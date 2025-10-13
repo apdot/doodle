@@ -68,12 +68,11 @@ return {
 To enable the powerful Telescope integration, you must load `doodle` as an extension in your Telescope
  config and set up your desired keymaps.
 ```lua
--- lua/plugins/telescope.lua
 return {
   'nvim-telescope/telescope.nvim',
   dependencies = {
       'nvim-lua/plenary.nvim',
-      'apdot/doodle.nvim', -- Ensure doodle.nvim is a dependency
+      'apdot/doodle', -- Ensure doodle is a dependency
   },
   config = function()
       local telescope = require('telescope')
@@ -91,7 +90,7 @@ return {
           telescope.extensions.doodle.find_notes()
       end, { desc = "Doodle Find Notes" })
 
-      keymap("n", "<space>dF", function()
+      keymap("n", "<space>ff", function()
           telescope.extensions.doodle.find_files()
       end, { desc = "Doodle Find Files" })
 
