@@ -502,9 +502,7 @@ function DoodleUI:render_graph(height, width, bufnr, win_id)
         if node1 then
             for _, target in ipairs(connections.outgoing) do
                 local node2 = self.graph.note_map[target.note.uuid]
-                if node2 and (node1.uuid < node2.uuid) then
-                    View.draw_line(canvas, width, height, node1.x, node1.y, node2.x, node2.y)
-                end
+                View.draw_line(canvas, width, height, node1.x, node1.y, node2.x, node2.y)
             end
         end
     end
