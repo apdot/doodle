@@ -23,7 +23,7 @@
 ## ⚙️ Installation and Configuration
  **IMPORTANT**: `doodle.nvim` uses a local SQLite database to store your notes. This requires the `sqlite3` command-line tool to be installed on your system.
 
-### Plugin Configuration
+### 1. Plugin Configuration
 Here is a minimal, real-world setup guide using `lazy.nvim`.
 Add the following to your `lazy.nvim` plugin specifications. This example includes recommended keymaps.
 
@@ -61,5 +61,43 @@ return {
           desc = "Doodle Links"
       },
   },
+}
+````
+
+### 2. Configure Telescope
+To enable the powerful Telescope integration, you must load `doodle` as an extension in your Telescope
+ config and set up your desired keymaps.
+```lua
+-- lua/plugins/telescope.lua
+return {
+  'nvim-telescope/telescope.nvim',
+  dependencies = {
+      'nvim-lua/plenary.nvim',
+      'apdot/doodle.nvim', -- Ensure doodle.nvim is a dependency
+  },
+  config = function()
+      local telescope = require('telescope')
+      telescope.setup {
+          extensions = {
+              doodle = {} -- Enable the doodle extension
+          }
+      }
+      -- Load the extension
+      telescope.load_extension('doodle')
+
+      -- Example keymaps for doodle's telescope pickers
+      local keymap = vim.keymap.set
+      keymap("n", "<space>dd", function()
+          telescope.extensions.doodle.find_notes()
+      end, { desc = "Doodle Find Notes" })
+
+      keymap("n", "<space>dF", function()
+          telescope.extensions.doodle.find_files()
+      end, { desc = "Doodle Find Files" })
+
+      keymap("n", "<space>dy", function()
+          telescope.extensions.doodle.find_templates()
+      end, { desc = "Doodle Find Templates" })
+  end,
 }
 ````
