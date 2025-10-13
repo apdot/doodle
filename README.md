@@ -17,4 +17,49 @@
 ## ⚡️ Requirements
 -   Neovim >= 0.8
 -   [plenary.nvim](https://github.com/nvim-lua/plenary.nvim)
--   [sqlite.lua](https://github.com/kkharji/sqlite.lua)
+-   [sqlite.lua](https://github.com/kkharji/sqlite.lua) 
+-   sqlite3 command-line tool
+
+## ⚙️ Installation and Configuration
+ **IMPORTANT**: `doodle.nvim` uses a local SQLite database to store your notes. This requires the `sqlite3` command-line tool to be installed on your system.
+
+### Plugin Configuration
+Here is a minimal, real-world setup guide using `lazy.nvim`.
+Add the following to your `lazy.nvim` plugin specifications. This example includes recommended keymaps.
+
+```lua
+return {
+  "apdot/doodle",
+  dependencies = {
+      "kkharji/sqlite.lua",
+      "nvim-lua/plenary.nvim",
+      "nvim-telescope/telescope.nvim",
+  },
+  config = function()
+      require("doodle").setup({
+          settings = {
+              -- This is the only required setting for sync to work.
+              -- Set it to the absolute path of your private notes repository.
+              git_repo = "path/to/your/initialized/git/repository",
+          }
+      })
+  end,
+  keys = {
+      {
+          "<space>df",
+          function() require("doodle"):toggle_finder() end,
+          desc = "Doodle Finder"
+      },
+      {
+          "<space>ds",
+          function() require("doodle"):sync() end,
+          desc = "Doodle Sync"
+      },
+      {
+          "<space>dl",
+          function() require("doodle"):toggle_links() end,
+          desc = "Doodle Links"
+      },
+  },
+}
+````
