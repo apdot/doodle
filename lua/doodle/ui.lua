@@ -499,14 +499,14 @@ function DoodleUI:render_graph(height, width, bufnr, win_id)
     -- Draw edges first (background)
     for source_id, connections in pairs(self.graph.adjacency) do
         local node1 = self.graph.note_map[source_id]
-        print("render graph node1 title", node1.title)
         if node1 then
+            print("render graph node1 title", node1.title)
             for _, target in ipairs(connections.outgoing) do
                 local uuid = target.note.uuid
                 if uuid then
                     local node2 = self.graph.note_map[target.note.uuid]
                     if node2 then
-                        --- View.draw_line(canvas, width, height, node1.x, node1.y, node2.x, node2.y)
+                        View.draw_line(canvas, width, height, node1.x, node1.y, node2.x, node2.y)
                     end
                 end
             end
