@@ -527,7 +527,7 @@ end
 
 function DoodleUI:apply_forces(height, width)
     local gravity_constant = 0.001
-    local repulsion_constant = 1.2
+    local repulsion_constant = 1.5
     local attraction_constant = 0.009
     local damping_constant = 0.90
     local resting_length = 2
