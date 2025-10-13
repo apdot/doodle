@@ -4,6 +4,7 @@
    <p>Doodle is a powerful note-taking and knowledge-management plugin for Neovim, inspired by Obsidian. It provides an integrated environment to capture, organize, and connect your thoughts without ever leaving your editor.</p>
 </div>
 
+---
 ## ✨ Features
 -   **Hierarchical & Scoped Notes:** Organize your notes in a familiar directory structure. Scope notes to a `Project`, `Branch` (from Git), or keep them `Global`.
 -   **Powerful Finder:** A custom floating window to navigate, create, move, and rename your notes and directories with simple text edits.
@@ -16,10 +17,11 @@
 
 ## ⚡️ Requirements
 -   Neovim >= 0.8
+-   sqlite3 command-line tool
 -   [plenary.nvim](https://github.com/nvim-lua/plenary.nvim)
 -   [sqlite.lua](https://github.com/kkharji/sqlite.lua) 
--   sqlite3 command-line tool
 
+---
 ## ⚙️ Installation and Configuration
  **IMPORTANT**: `doodle.nvim` uses a local SQLite database to store your notes. This requires the `sqlite3` command-line tool to be installed on your system.
 
@@ -100,3 +102,56 @@ return {
   end,
 }
 ````
+---
+## 🚀 Features In-Depth
+
+### 🦉 The Finder: Your Editable Mission Control
+
+The `:DoodleFinder` is the heart of Doodle's navigation. It's not just a file list; it's a **fully
+editable Neovim buffer** that represents the structure of your notes. This text-based interface
+means you can manage your entire note hierarchy with the full power of Vim's text editing capabilities.
+
+-   **Create**: Add a new line. A line ending in `/` becomes a directory; otherwise, it's a note.
+-   **Rename**: Use `cw` or any other edit command to rename a note or directory in-place.
+-   **Move**: Use `dd` to cut a note and `p` to paste it under a new directory.
+-   **Delete**: Delete the line (`dd`) to remove the note or directory.
+
+All changes are applied when you save the buffer with `:w`.
+
+### 📝 Note Management: Linking, Tagging, and Templating
+
+Doodle enhances standard markdown with powerful features for organization and context.
+
+-   **Scoped Notes**: Keep your thoughts organized. Notes can be scoped to:
+    -   **Project**: Tied to your current working directory.
+    -   **Branch**: Tied to the current Git branch (perfect for feature-specific research).
+    -   **Global**: Available everywhere.
+-   **Bi-Directional Linking**: Create links to other notes using markdown syntax `[linktext](note_uuid)`. Doodle tracks these connections, allowing you to see all backlinks for a given note in the Links View. You can also link to any file on your system.
+-   **Tagging**: Add `#tags` to the `Tags:` line of your notes. Doodle provides omni-completion (`<C-x><C-o>`) for existing tags, helping you maintain a consistent tag system.
+-   **Quick Capture with `:DoodleHere`**: While in any file, run `:DoodleHere`. Doodle instantly creates a new note containing a link back to your current file and line number, along with the surrounding code as context. It's the perfect workflow for developers taking notes on a codebase.
+-   **Templates**: Create reusable note structures with `:DoodleCreateTemplate <name>`. You can then use the Telescope picker to create a new note from a template, pre-filled with your content.
+
+### 🔭 Telescope Integration: Find Anything, Instantly
+
+Doodle integrates deeply with `telescope.nvim` for a world-class fuzzy-finding experience.
+
+-   **Find Notes (`doodle.find_notes`)**: The main entry point. Fuzzy find notes by title, path, or `#tags`. The previewer shows you the note content as you type.
+-   **Find Files (`doodle.find_files`)**: A wrapper around Telescope's native file finder, but with a powerful addition: press `<C-l>` to insert a markdown link to the selected file directly into your current note.
+-   **Find Templates (`doodle.find_templates`)**: Quickly find a template and apply it to your current buffer.
+-   **Dynamic Scope Switching**: While in the `find_notes` picker, use `<C-p>`, `<C-b>`, and `<C-g>` to dynamically filter your search to the Project, Branch, or Global scopes.
+
+### 🌐 Discovering Connections: Links View & Graph View
+
+Doodle provides two powerful ways to understand the relationships between your notes.
+
+-   **:DoodleLinks**: Opens a two-pane view. The left pane lists all your notes. The right pane shows all **incoming and outgoing links** for the selected note, giving you a precise, textual overview of its connections.
+-   **:DoodleGraphView**: For a more visual exploration, this command opens a dynamic, force-directed graph of your entire knowledge base. It's a fantastic tool for discovering unexpected connections and getting a high-level overview of your thoughts.
+
+### 🔄 Synchronization: Robust & Reliable
+
+Never worry about losing your notes or having them out of sync. Doodle uses a **Git repository** as a robust, distributed backend.
+
+-   **How it Works**: Doodle maintains an operation log (`oplog.json`) and periodic `SNAPSHOT` files in your designated Git repo. When you run `:DoodleSync`, it pulls the latest changes, applies them to your local SQLite database, and then pushes your local changes. This log-based approach is reliable and minimizes merge conflicts.
+-   **Simple Setup**: Just create a private Git repository, clone it somewhere on your machine, and point the `git_repo` config option to it. Doodle handles the rest.
+
+---
