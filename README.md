@@ -118,7 +118,9 @@ means you can manage your entire note hierarchy with the full power of Vim's tex
 
 All changes are applied when you save the buffer with `:w`.
 
-<img alt="Finder Demo" height="280" src="/assets/finder_demo.gif" />
+<div align="center">
+    <img alt="Finder Demo" height="400" src="/assets/finder_demo.gif" />
+</div>
 
 ### 📝 Note Management: Linking, Tagging, and Templating
 
