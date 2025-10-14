@@ -17,7 +17,7 @@
 
 ## ⚡️ Requirements
 -   Neovim >= 0.8
--   sqlite3 command-line tool
+-   Sqlite3 command-line tool
 -   [plenary.nvim](https://github.com/nvim-lua/plenary.nvim)
 -   [sqlite.lua](https://github.com/kkharji/sqlite.lua) 
 
@@ -117,6 +117,8 @@ means you can manage your entire note hierarchy with the full power of Vim's tex
 -   **Delete**: Delete the line (`dd`) to remove the note or directory.
 
 All changes are applied when you save the buffer with `:w`.
+
+<img alt="Finder Demo" height="280" src="/assets/finder_demo.gif" />
 
 ### 📝 Note Management: Linking, Tagging, and Templating
 
