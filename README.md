@@ -125,7 +125,8 @@ All changes are applied when you save the buffer with `:w`.
 ### 📝 Note Management: Capture, Connect, and Organize
 Doodle enhances standard markdown with powerful features for organization and context.
 
--   **Scoped Notes**: Keep your thoughts organized. Notes can be scoped to:
+#### Scoped Notes
+ - Keep your thoughts organized. Notes can be scoped to:
     -   **Project**: Tied to your current working directory.
     -   **Branch**: Tied to the current Git branch (perfect for feature-specific research).
     -   **Global**: Available everywhere.
