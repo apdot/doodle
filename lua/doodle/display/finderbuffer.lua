@@ -84,21 +84,6 @@ function M.setup(bufnr)
         vim.cmd([[syntax match DoodleConcealID /^@@@.\{-}\s/ conceal]])
     end)
 
-    -- this is causing race-conditions
-    -- vim.api.nvim_create_autocmd({ "BufLeave" }, {
-    --     buffer = bufnr,
-    --     callback = function()
-    --         if ui.settings.auto_save then
-    --             local parsed = get_content(bufnr)
-    --             ui:update_finder(parsed)
-    --         end
-    --         vim.schedule(function()
-    --             print("bufleave finder close")
-    --             ui:toggle_finder()
-    --         end)
-    --     end
-    -- })
-
     vim.keymap.set("n", "<CR>", function()
         local parsed_line = get_line()
         if not parsed_line or parsed_line.id == nil then
@@ -114,7 +99,6 @@ function M.setup(bufnr)
                 ui:render_finder()
             end)
         elseif parsed_line.note then
-            print("toggle finder CR")
             ui:toggle_finder()
             vim.schedule(function()
                 ui:open_note(uuid)

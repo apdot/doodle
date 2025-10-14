@@ -288,7 +288,6 @@ function DoodleDB:create_note(note)
     ]]
 
     local uuid = note.uuid and note.uuid or SyncUtil.uuid()
-    print("note title in create", note.title)
     self._conn:eval(sql, DBUtil.dict({
         uuid = uuid,
         project = note.project,
@@ -333,7 +332,7 @@ function DoodleDB:get_all_notes_with_tags(where)
     WHERE %s
     GROUP BY note.uuid
     ]]):format(where)
-    -- print(query)
+
     return self._conn:eval(query)
 end
 
@@ -628,7 +627,7 @@ function DoodleDB:create_link(link)
     ]]
 
     local uuid = link.uuid and link.uuid or SyncUtil.uuid()
-    print("link str", link.link_str)
+
     self._conn:eval(sql, DBUtil.dict({
         src = link.src,
         dest = link.dest,
@@ -652,7 +651,6 @@ function DoodleDB:mark_synced(table_name, primary_key, values, now)
 	WHERE (%s) IN ( VALUES %s )
     ]]):format(table_name, now, primary_key, values)
 
-    -- print("query", query)
     self._conn:eval(query)
 end
 
@@ -671,7 +669,7 @@ function DoodleDB:bulk_upsert(table_name, columns, values, primary_key, where)
     table.insert(query_parts, ("WHERE %s"):format(where))
 
     local query = table.concat(query_parts, "\n")
-    -- print(query)
+
     local ok, err = self._conn:eval(query)
 end
 

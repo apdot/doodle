@@ -6,7 +6,6 @@ function M.setup_left(bufnr)
     local ui = require("doodle")._ui
 
     vim.keymap.set("n", "<CR>", function()
-        print("left CR")
         local line_number = vim.api.nvim_win_get_cursor(0)[1]
         ui.link_idx = line_number - 2
         ui:render_links_refresh()

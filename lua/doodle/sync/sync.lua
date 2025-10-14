@@ -151,9 +151,7 @@ end
 ---@param settings DoodleSettings
 ---@param config SyncConfig
 local function update_config(settings, config)
-    print("saveing config", config.bytes)
     local config_path = Path:new(settings.git_repo .. "/config")
-    print("config name", config.name)
     config_path:write(vim.json.encode(config), "w")
 end
 
@@ -183,7 +181,7 @@ end
 function DoodleSync:pull()
     local ok, err = GitUtil.pull(self.settings.git_repo)
     if not ok then
-        print("Git rebase failed with error: " .. err)
+        vim.notify("Git rebase failed with error: " .. err)
         return false
     end
 

@@ -12,12 +12,10 @@ function M.complete_tags(findstart, base)
         local cursor_col = vim.api.nvim_win_get_cursor(0)[2]
         -- look backwards from the cursor for the '#' that starts a tag
         local start_col = line:sub(1, cursor_col):find("#%S+$")
-        print("complete_tags", start_col)
         return start_col and start_col or -1
     else
         -- wants to know the list of matching words
         local ui = require("doodle")._ui
-        print("base", base)
         if base and #base > 0 then
             return Tags.search(base, ui.db)
         end

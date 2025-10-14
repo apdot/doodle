@@ -148,7 +148,6 @@ function NoteTag.bulk_map(tag_names, note_ids, db)
     local tags = Tag.save(tag_names, db)
 
     for _, note_id in pairs(note_ids) do
-        print("note_id", note_id)
         NoteTag.map(tags, note_id, db)
     end
 end

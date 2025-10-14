@@ -116,8 +116,6 @@ function DoodleUI:update_finder(parsed)
         local path_ids = Present.get_path_ids(self.breadcrumbs)
         if line.id ~= nil then
             local uuid = self.idx_to_uuid[tonumber(line.id)]
-            print("line id in update", line.id)
-            print("uuid in update", uuid)
             if line.directory ~= nil then
                 local dir = self.directories[uuid]
                 if not dir then
@@ -149,7 +147,6 @@ function DoodleUI:update_finder(parsed)
                 end
                 if note.status == 1 then
                     note = DoodleNote.copy(uuid, curr_parent, self.db)
-                    print("note copy created ", uuid, note.uuid)
                 end
 
                 note.title = line.note
@@ -206,9 +203,7 @@ function DoodleUI:update_finder(parsed)
         end
     end
     for uuid, note in pairs(self.notes) do
-        print("uuid in update ", uuid, self.uuid_to_idx[uuid])
         if self.uuid_to_idx[uuid] == nil then
-            print("uuid in update nil ", uuid)
             self:map_idx(uuid)
             table.insert(self.display_notes, note)
         end
@@ -273,11 +268,8 @@ end
 ---@param note_id string
 function DoodleUI:open_note(note_id)
     if self.open_notes then
-        print("in open notes")
         for bufnr, note_info in pairs(self.open_notes) do
-            print("loop", bufnr, note_info.blob.note_id)
             if note_info.blob.note_id == note_id and vim.api.nvim_win_is_valid(note_info.win_id) then
-                print("existing note")
                 vim.schedule(function()
                     vim.api.nvim_win_set_buf(note_info.win_id, bufnr)
                 end)
@@ -306,7 +298,6 @@ function DoodleUI:close_note(bufnr)
     if not note_info then
         return
     end
-    print("closing notes")
     self.open_notes[bufnr] = nil
 end
 
@@ -324,9 +315,7 @@ function DoodleUI:render_finder()
 end
 
 function DoodleUI:toggle_finder()
-    print("win id in tf", self.win_id)
     if self.win_id ~= nil then
-        print("toggle finder closing")
         View.close(self.bufnr, self.win_id)
         self.bufnr, self.win_id = nil, nil
         return
@@ -350,18 +339,10 @@ function DoodleUI:toggle_finder()
 end
 
 function DoodleUI:render_links_refresh()
-    print("link_id", self.link_idx)
     local selected_note = self.graph.notes[self.link_idx]
-    local current_win = vim.api.nvim_get_current_win()
 
-    print("current_win", current_win)
-    print("right win", self.link_win_id.right)
-    print("left win", self.link_win_id.left)
     vim.api.nvim_win_set_buf(self.link_win_id.right, self.link_bufnr.right)
-    -- if  current_win ~= self.link_bufnr.right then
-    --     vim.api.nvim_win_set_buf(current_win, self.link_bufnr.right)
-    --     self.link_win_id.right = current_win
-    -- end
+
     View.render(self.link_bufnr.right, self.link_win_id.right,
         Present.get_links(self.graph.adjacency[selected_note.uuid]),
         View.links_right_header(selected_note.title), { "Links" })
@@ -369,18 +350,12 @@ end
 
 ---@param bufnr integer
 function DoodleUI:render_links(bufnr)
-    -- local content = Present.get_links_content(self.notes, self.directories)
-    -- local bufnr, win_id = self.bufnr, self.win_id
-
     if not self.graph then
         self.graph = Graph.build(self.db)
 
         if self.open_notes then
-            print("link open note, bufnr", bufnr)
             local open_note = self.open_notes[bufnr]
-            print("link open", open_note)
             if open_note then
-                print("idx", self.graph.note_idx[open_note.id])
                 self.link_idx = self.graph.note_idx[open_note.id]
             end
         end
@@ -389,16 +364,6 @@ function DoodleUI:render_links(bufnr)
             self.link_idx = 1
         end
     end
-
-    -- for k, v in pairs(graph.adjacency) do
-    --     print("note id", k)
-    --     for _, note_data in pairs(v.outgoing) do
-    --         print("outgoing ", note_data.note.title, note_data.link.link_str)
-    --     end
-    --     for _, note_data in pairs(v.incoming) do
-    --         print("incoming ", note_data.note.title, note_data.link.link_str)
-    --     end
-    -- end
 
     View.render(self.link_bufnr.left, self.link_win_id.left,
         Present.get_labels(self.graph.labels), View.links_left_header(),
@@ -500,7 +465,6 @@ function DoodleUI:render_graph(height, width, bufnr, win_id)
     for source_id, connections in pairs(self.graph.adjacency) do
         local node1 = self.graph.note_map[source_id]
         if node1 then
-            print("render graph node1 title", node1.title)
             for _, target in ipairs(connections.outgoing) do
                 local uuid = target.note.uuid
                 if uuid then
@@ -514,7 +478,6 @@ function DoodleUI:render_graph(height, width, bufnr, win_id)
     end
 
     for _, node in ipairs(self.graph.notes) do
-        -- print("final positions", node.title, node.x, node.y)
         View.plot_text(canvas, width, node.x, node.y, node.title)
     end
 
@@ -525,10 +488,10 @@ function DoodleUI:render_graph(height, width, bufnr, win_id)
         { { " Graph View", "Keyword" } }, { "Graph" })
 end
 
-function DoodleUI:apply_forces(height, width)
+function DoodleUI:apply_forces(height, width, force_scale_factor)
     local gravity_constant = 0.001
-    local repulsion_constant = 1.5
-    local attraction_constant = 0.009
+    local repulsion_constant = 10 * force_scale_factor
+    local attraction_constant = 0.01 * force_scale_factor
     local damping_constant = 0.90
     local resting_length = 2
     local max_velocity = 2
@@ -545,6 +508,13 @@ function DoodleUI:apply_forces(height, width)
             local dist = math.sqrt(dist_sq)
 
             local force = repulsion_constant / dist_sq
+
+            local overlap_dist = (#n1.title / 2) + (#n2.title / 2) + 6
+            if dist < overlap_dist and n1.x == n2.x then
+                local overlap_amount = overlap_dist - dist
+                force = force + (overlap_amount)
+            end
+
             local fx, fy = (dx / dist) * force, (dy / dist) * force
 
             n1.vx = n1.vx + fx
@@ -562,7 +532,7 @@ function DoodleUI:apply_forces(height, width)
                 local n2 = self.graph.note_map[target.note.uuid]
                 if n2 then
                     local dx, dy = n1.x - n2.x, n1.y - n2.y
-                    local fx, fy = (dx - resting_length) * attraction_constant,
+                    local fx, fy = (dx - (#n1.title + #n2.title) / 2) * attraction_constant,
                         (dy - resting_length) * attraction_constant
 
                     n1.vx = n1.vx - fx
@@ -586,11 +556,11 @@ function DoodleUI:apply_forces(height, width)
         node.vx = node.vx * damping_constant / math.sqrt(node.mass)
         node.vy = node.vy * damping_constant / math.sqrt(node.mass)
 
-        local speed = math.sqrt(node.vx * node.vx + node.vy * node.vy)
-        if speed > max_velocity then
-            node.vx = node.vx / speed * max_velocity
-            node.vy = node.vy / speed * max_velocity
-        end
+        -- local speed = math.sqrt(node.vx * node.vx + node.vy * node.vy)
+        -- if speed > max_velocity then
+        --     node.vx = node.vx / speed * max_velocity
+        --     node.vy = node.vy / speed * max_velocity
+        -- end
 
         node.x = node.x + node.vx
         node.y = node.y + node.vy
@@ -600,7 +570,7 @@ function DoodleUI:apply_forces(height, width)
     end
 end
 
-function DoodleUI:start_animation(height, width, bufnr, win_id, iterations, delay)
+function DoodleUI:start_animation(height, width, bufnr, win_id, iterations, delay, force_scale_factor)
     local frame = 1
 
     local function step()
@@ -609,7 +579,7 @@ function DoodleUI:start_animation(height, width, bufnr, win_id, iterations, dela
             return
         end
 
-        self:apply_forces(height, width)
+        self:apply_forces(height, width, force_scale_factor)
         self:render_graph(height, width, bufnr, win_id)
 
         frame = frame + 1
@@ -631,18 +601,27 @@ function DoodleUI:graph_view()
     vim.api.nvim_set_option_value("wrap", false, { win = win_id })
     vim.api.nvim_set_option_value("cursorline", false, { win = win_id })
 
-    local width = vim.api.nvim_win_get_width(win_id)
-    local height = vim.api.nvim_win_get_height(win_id)
+    local win_width = vim.api.nvim_win_get_width(win_id)
+    local win_height = vim.api.nvim_win_get_height(win_id)
+
+    local num_nodes = #self.graph.notes
+    local scale_factor = math.max(0, math.sqrt(num_nodes) / 3.0 - 1)
+    local canvas_width = math.floor(win_width * (1 + scale_factor))
+    local canvas_height = math.floor(win_height * (1 + scale_factor))
+    local win_diag = math.sqrt(win_width * win_width + win_height * win_height)
+    local canvas_diag = math.sqrt(canvas_width * canvas_width + canvas_height * canvas_height)
+    local force_scale_factor = canvas_diag / win_diag
+
     for _, node in ipairs(self.graph.notes) do
-        node.x, node.y = math.random(1, width - 1), math.random(3,
-            height - 1)
+        node.x, node.y = math.random(1, canvas_width - 1), math.random(3,
+            canvas_height - 1)
         node.vx, node.vy = 0, 0
         local degree = #self.graph.adjacency[node.uuid].incoming or 0
             + #self.graph.adjacency[node.uuid].outgoing or 0
         node.mass = degree + 1
     end
 
-    self:start_animation(height, width, bufnr, win_id, 250, 15)
+    self:start_animation(canvas_height, canvas_width, bufnr, win_id, 250, 15, force_scale_factor)
 end
 
 return DoodleUI

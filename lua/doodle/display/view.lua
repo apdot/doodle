@@ -151,10 +151,6 @@ end
 ---@param content string[]
 local function render_content(bufnr, content)
     vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr })
-    -- print("content", content)
-    -- for k, v in pairs(content) do
-    --     print(k, v)
-    -- end
     vim.api.nvim_buf_set_lines(bufnr, 1, -1, false, content)
 end
 
