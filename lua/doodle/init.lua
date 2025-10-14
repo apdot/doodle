@@ -62,8 +62,18 @@ function Doodle:graph_view()
     self._ui:graph_view()
 end
 
-function Doodle.find_notes()
-    require("telescope._extensions.find")()
+function Doodle:find_notes(opts)
+    local telescope = require("telescope._extensions.find")
+    local arg = opts.fargs[1]
+    if arg == 'n' then
+        telescope.find_notes()
+    elseif arg == 'f' then
+        telescope.find_files()
+    elseif arg == 't' then
+        telescope.find_templates()
+    else
+        vim.notify("Invalid argument for DoodleFind: " .. arg .. ". Use 'n', 'f', or 't'.")
+    end
 end
 
 local doodle = Doodle:new()
@@ -127,10 +137,17 @@ function Doodle.setup(self, partial_config)
     )
 
     vim.api.nvim_create_user_command(
-        "DoodleFind",
-        Doodle.find_notes, {
-            desc = "Find a doodle note with Telescope"
-        })
+        'DoodleFind',
+        function(opts)
+            doodle:find_notes(opts)
+        end,
+        {
+            nargs = 1,
+            complete = function(_, _, _)
+                return { 'n', 'f', 't' }
+            end
+        }
+    )
 
     vim.api.nvim_create_user_command(
         'DoodleCreateTemplate',
