@@ -122,18 +122,23 @@ All changes are applied when you save the buffer with `:w`.
     <img alt="Finder Demo" height="400" src="/assets/finder_demo.gif" />
 </div>
 
-### 📝 Note Management: Linking, Tagging, and Templating
-
+### 📝 Note Management: Capture, Connect, and Organize
 Doodle enhances standard markdown with powerful features for organization and context.
 
 -   **Scoped Notes**: Keep your thoughts organized. Notes can be scoped to:
     -   **Project**: Tied to your current working directory.
     -   **Branch**: Tied to the current Git branch (perfect for feature-specific research).
     -   **Global**: Available everywhere.
--   **Bi-Directional Linking**: Create links to other notes using markdown syntax `[linktext](note_uuid)`. Doodle tracks these connections, allowing you to see all backlinks for a given note in the Links View. You can also link to any file on your system.
--   **Tagging**: Add `#tags` to the `Tags:` line of your notes. Doodle provides omni-completion (`<C-x><C-o>`) for existing tags, helping you maintain a consistent tag system.
--   **Quick Capture with `:DoodleHere`**: While in any file, run `:DoodleHere`. Doodle instantly creates a new note containing a link back to your current file and line number, along with the surrounding code as context. It's the perfect workflow for developers taking notes on a codebase.
--   **Templates**: Create reusable note structures with `:DoodleCreateTemplate <name>`. You can then use the Telescope picker to create a new note from a template, pre-filled with your content.
+#### Linking
+ - Bi-Directional Links: Create links to other notes using markdown syntax [link](note_uuid) or to any code file on your system, including line numbers.
+ - Connection Tracking: Doodle automatically tracks all incoming and outgoing links, which can be viewed in the Links View.
+ - Quick Capture: Use :DoodleHere to instantly create a new note that links back to your current file and line, capturing the surrounding code for context.
+#### Tagging
+ - Flexible Tagging: Add #tags to the Tags: line of your notes to categorize them for easy filtering and retrieval.
+ - Built-in Autocompletion: Doodle provides omni-completion (<C-x><C-o>) for existing tags, helping you maintain a consistent and organized tag system.
+#### Templating
+ - Reusable Structures: Create reusable note structures for different purposes (e.g., meeting notes, daily logs) with the :DoodleCreateTemplate <name> command.
+ - Telescope Integration: Use the Telescope picker to quickly find a template and create a new note from it, pre-filled with your content.
 
 ### 🔭 Telescope Integration: Find Anything, Instantly
 
