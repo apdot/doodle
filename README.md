@@ -126,20 +126,35 @@ All changes are applied when you save the buffer with `:w`.
 Doodle enhances standard markdown with powerful features for organization and context.
 
 #### Scoped Notes
- - Keep your thoughts organized. Notes can be scoped to:
-    -   **Project**: Tied to your current working directory.
-    -   **Branch**: Tied to the current Git branch (perfect for feature-specific research).
-    -   **Global**: Available everywhere.
+ Keep your thoughts organized. Notes can be scoped to:
+ -  **Project**: Tied to your current working directory.
+ -  **Branch**: Tied to the current Git branch (perfect for feature-specific research).
+ -  **Global**: Available everywhere.
+
 #### Linking
  - Bi-Directional Links: Create links to other notes using markdown syntax [link](note_uuid) or to any code file on your system, including line numbers.
  - Connection Tracking: Doodle automatically tracks all incoming and outgoing links, which can be viewed in the Links View.
  - Quick Capture: Use :DoodleHere to instantly create a new note that links back to your current file and line, capturing the surrounding code for context.
+
+<div align="center">
+    <img alt="Linking Demo" height="400" src="/assets/linking_demo.gif" />
+</div>
+
 #### Tagging
  - Flexible Tagging: Add #tags to the Tags: line of your notes to categorize them for easy filtering and retrieval.
  - Built-in Autocompletion: Doodle provides omni-completion (<C-x><C-o>) for existing tags, helping you maintain a consistent and organized tag system.
+
+<div align="center">
+    <img alt="Tagging Demo" height="400" src="/assets/tagging_demo.gif" />
+</div>
+
 #### Templating
  - Reusable Structures: Create reusable note structures for different purposes (e.g., meeting notes, daily logs) with the :DoodleCreateTemplate <name> command.
  - Telescope Integration: Use the Telescope picker to quickly find a template and create a new note from it, pre-filled with your content.
+
+<div align="center">
+    <img alt="Template Demo" height="400" src="/assets/template_demo.gif" />
+</div>
 
 ### 🔭 Telescope Integration: Find Anything, Instantly
 
@@ -150,6 +165,10 @@ Doodle integrates deeply with `telescope.nvim` for a world-class fuzzy-finding e
 -   **Find Templates (`doodle.find_templates`)**: Quickly find a template and apply it to your current buffer.
 -   **Dynamic Scope Switching**: While in the `find_notes` picker, use `<C-p>`, `<C-b>`, and `<C-g>` to dynamically filter your search to the Project, Branch, or Global scopes.
 
+<div align="center">
+    <img alt="Telescope Demo" height="400" src="/assets/telescope_demo.gif" />
+</div>
+
 ### 🌐 Discovering Connections: Links View & Graph View
 
 Doodle provides two powerful ways to understand the relationships between your notes.
@@ -157,11 +176,19 @@ Doodle provides two powerful ways to understand the relationships between your n
 -   **:DoodleLinks**: Opens a two-pane view. The left pane lists all your notes. The right pane shows all **incoming and outgoing links** for the selected note, giving you a precise, textual overview of its connections.
 -   **:DoodleGraphView**: For a more visual exploration, this command opens a dynamic, force-directed graph of your entire knowledge base. It's a fantastic tool for discovering unexpected connections and getting a high-level overview of your thoughts.
 
+<div align="center">
+    <img alt="Link View Demo" height="400" src="/assets/link_view_demo.gif" />
+</div>
+
 ### 🔄 Synchronization: Robust & Reliable
 
 Never worry about losing your notes or having them out of sync. Doodle uses a **Git repository** as a robust, distributed backend.
 
 -   **How it Works**: Doodle maintains an operation log (`oplog.json`) and periodic `SNAPSHOT` files in your designated Git repo. When you run `:DoodleSync`, it pulls the latest changes, applies them to your local SQLite database, and then pushes your local changes. This log-based approach is reliable and minimizes merge conflicts.
 -   **Simple Setup**: Just create a private Git repository, clone it somewhere on your machine, and point the `git_repo` config option to it. Doodle handles the rest.
+
+<div align="center">
+    <img alt="Link View Demo" height="400" src="/assets/sync_demo.gif" />
+</div>
 
 ---
