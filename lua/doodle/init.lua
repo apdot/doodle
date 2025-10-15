@@ -3,9 +3,6 @@ local DoodleUI = require("doodle.ui")
 local DoodleDB = require("doodle.storage.db")
 local DoodleSync = require("doodle.sync.sync")
 local Completion = require("doodle.tags.completion")
-local DoodleNote = require("doodle.note")
-local DoodleBlob = require("doodle.blob")
-local FormatUtil = require("doodle.utils.format_util")
 
 ---@class Doodle
 ---@field config DoodleConfig
@@ -24,8 +21,6 @@ function Doodle:new()
     local doodle = setmetatable({
         config = config,
         _db = db,
-        _ui = DoodleUI:new(config.settings, db),
-        _sync = DoodleSync:new(config.settings, config.operations, db),
         completion = Completion,
         hooks_setup = false
     }, self)
@@ -67,8 +62,18 @@ function Doodle:graph_view()
     self._ui:graph_view()
 end
 
-function Doodle.find_notes()
-    require("telescope._extensions.find")()
+function Doodle:find_notes(opts)
+    local telescope = require("telescope._extensions.find")
+    local arg = opts.fargs[1]
+    if arg == 'n' then
+        telescope.find_notes()
+    elseif arg == 'f' then
+        telescope.find_files()
+    elseif arg == 't' then
+        telescope.find_templates()
+    else
+        vim.notify("Invalid argument for DoodleFind: " .. arg .. ". Use 'n', 'f', or 't'.")
+    end
 end
 
 local doodle = Doodle:new()
@@ -84,13 +89,16 @@ function Doodle.setup(self, partial_config)
         self = doodle
     end
 
+    ---@diagnostic disable-next-line: param-type-mismatch
+    self.config = DoodleConfig.merge_config(partial_config, self.config)
     self._db:setup()
+    self._ui = DoodleUI:new(self.config.settings, self._db)
+    self._sync = DoodleSync:new(self.config.settings, self.config.operations, self._db)
 
     if not self.hooks_setup then
         vim.api.nvim_create_autocmd({ "VimLeavePre" }, {
             callback = function()
                 self:save()
-                -- self.db:garbage_collect()
             end
         })
         self.hooks_setup = true
@@ -129,10 +137,17 @@ function Doodle.setup(self, partial_config)
     )
 
     vim.api.nvim_create_user_command(
-        "DoodleFind",
-        Doodle.find_notes, {
-            desc = "Find a doodle note with Telescope"
-        })
+        'DoodleFind',
+        function(opts)
+            doodle:find_notes(opts)
+        end,
+        {
+            nargs = 1,
+            complete = function(_, _, _)
+                return { 'n', 'f', 't' }
+            end
+        }
+    )
 
     vim.api.nvim_create_user_command(
         'DoodleCreateTemplate',
@@ -144,8 +159,8 @@ function Doodle.setup(self, partial_config)
 
     vim.api.nvim_create_user_command(
         'DoodleGraphView',
-        function(opts)
-            doodle:graph_view(opts)
+        function()
+            doodle:graph_view()
         end,
         { nargs = 0 }
     )

@@ -41,7 +41,6 @@ function M.setup(bufnr, blob, path)
         callback = function(args)
             TagUtil.update_tags(args.buf, blob, ui.db)
             blob.content = FormatUtil.get_content(args.buf)
-            print("content in save", blob.content)
             blob:save(ui.db)
             vim.api.nvim_set_option_value("modified", false, { buf = args.buf })
         end
@@ -57,7 +56,6 @@ function M.setup(bufnr, blob, path)
     vim.api.nvim_create_autocmd({ "BufLeave" }, {
         buffer = bufnr,
         callback = function(args)
-            print("in bufleave")
             local is_modified = vim.api.nvim_get_option_value("modified", { buf = args.buf })
             if ui.settings.auto_save and is_modified then
                 vim.api.nvim_buf_call(args.buf, function()
@@ -74,7 +72,6 @@ function M.setup(bufnr, blob, path)
     vim.api.nvim_create_autocmd({ "BufUnload" }, {
         buffer = bufnr,
         callback = function()
-            print("bufdelete closing note")
             ui:close_note(bufnr)
         end
     })

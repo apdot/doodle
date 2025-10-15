@@ -41,7 +41,6 @@ function M.push(files, msg, git_repo)
         files
     ), git_repo)
     if not ok then
-        print("Git add failed with error: " .. err)
         return false
     end
 
@@ -51,7 +50,6 @@ function M.push(files, msg, git_repo)
     }, git_repo)
 
     if not ok then
-        print("Git commit failed with error: " .. err)
         return false
     end
 
@@ -61,7 +59,6 @@ function M.push(files, msg, git_repo)
     }, git_repo)
 
     if not ok then
-        print("Git push failed with error: " .. err)
         return false
     end
 

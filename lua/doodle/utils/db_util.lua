@@ -36,7 +36,6 @@ end
 ---@return string[]
 function M.get_uuids(dict)
     return vim.tbl_map(function(obj)
-        print("obj.uuid", obj.uuid)
         return obj.uuid
     end, dict)
 end

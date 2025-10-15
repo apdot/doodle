@@ -101,26 +101,21 @@ function DoodleSync:apply_operations(oplog)
         if #oplog.directory > 0 then
             DoodleDirectory.update(oplog.directory, self.db)
         end
-        print("applied dir")
         if #oplog.note > 0 then
             DoodleNote.update(oplog.note, self.db)
         end
-        print("applied note")
         if #oplog.blob > 0 then
             DoodleBlob.update(oplog.blob, self.db)
         end
-        print("applied blob")
         if #oplog.tag > 0 then
             Tag.update(oplog.tag, self.db)
         end
-        print("applied tag")
         if #oplog.note_tag > 0 then
             NoteTag.update(oplog.note_tag, self.db)
         end
         if #oplog.link > 0 then
             Link.update(oplog.link, self.db)
         end
-        print("applied notetag")
     end)
 end
 
@@ -140,7 +135,6 @@ function DoodleSync:apply_snapshot()
         if snapshot_path then
             local data_str = snapshot_path:read()
             local oplog = DoodleOplog.create(data_str)
-            print("applying snapshot")
             return pcall(self.apply_operations, self, oplog)
         end
     end
@@ -151,9 +145,7 @@ end
 ---@param settings DoodleSettings
 ---@param config SyncConfig
 local function update_config(settings, config)
-    print("saveing config", config.bytes)
     local config_path = Path:new(settings.git_repo .. "/config")
-    print("config name", config.name)
     config_path:write(vim.json.encode(config), "w")
 end
 
@@ -168,7 +160,6 @@ function DoodleSync:apply_oplog()
     end
 
     local oplog = DoodleOplog.create(data_str)
-    print("applying oplog")
     ok = pcall(self.apply_operations, self, oplog)
 
     if ok then
@@ -183,7 +174,7 @@ end
 function DoodleSync:pull()
     local ok, err = GitUtil.pull(self.settings.git_repo)
     if not ok then
-        print("Git rebase failed with error: " .. err)
+        vim.notify("Git rebase failed with error: " .. err)
         return false
     end
 
@@ -280,13 +271,12 @@ function DoodleSync:push()
     local now = DBUtil.now()
 
     local oplog, file_path
-    local should_create_snapshot = self.handlers.snapshot_condition(self.config)
+    local should_create_snapshot = self.handlers.snapshot_condition(self.config,
+        self.settings.git_repo)
     if should_create_snapshot then
-        print("creating snap")
         oplog, file_path = self:create_snapshot()
         table.insert(files, file_path.filename)
     else
-        print("appending oplog")
         oplog, file_path = self:append_oplog()
     end
 

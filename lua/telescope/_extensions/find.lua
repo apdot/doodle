@@ -102,8 +102,6 @@ local function add_link(display_text, path, to_note)
     local bufnr = vim.api.nvim_get_current_buf()
     local note_info = ui.open_notes and ui.open_notes[bufnr]
     if note_info and note_info.id then
-        print("creating llink")
-        print(note_info.id, path)
         Link.create({
             src = note_info.id,
             dest = path,
@@ -189,10 +187,7 @@ find_notes = function(opts)
     end
 
     local notes = DoodleNote.get_all_with_tags(ui.db, where)
-    -- print("Notes for telescope")
-    -- for k, v in pairs(notes) do
-    --     print(k,v.title, v.tags)
-    -- end
+
     local previewer = create_previewer(ui)
     local scope_name;
     if opts.scope ~= nil and opts.scope ~= "all" then
