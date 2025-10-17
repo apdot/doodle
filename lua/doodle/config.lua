@@ -27,7 +27,7 @@ local DoodleConfig = {}
 function DoodleConfig.get_default()
     local settings = {
         auto_save = false,
-        sync = true,
+        sync = false,
         hide_hint = false,
         finder_height_factor = 0.4,
         finder_width_factor = 0.5,

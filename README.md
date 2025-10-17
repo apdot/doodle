@@ -43,6 +43,7 @@ return {
               -- This is the only required setting for sync to work.
               -- Set it to the absolute path of your private notes repository.
               git_repo = "path/to/your/initialized/git/repository",
+              sync = true,
           }
       })
   end,
