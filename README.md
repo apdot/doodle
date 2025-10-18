@@ -1,6 +1,6 @@
 <div align="center">
    <h1>Doodle</h1>
-   <p><strong>🧠 Your second brain, inside Neovim. <strong></p>
+   <p><strong>🧠 Your second brain, inside Neovim. </strong></p>
    <p>Doodle is a powerful note-taking and knowledge-management plugin for Neovim, inspired by Obsidian. It provides an integrated environment to capture, organize, and connect your thoughts without ever leaving your editor.</p>
 </div>
 
