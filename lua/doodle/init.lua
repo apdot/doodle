@@ -3,6 +3,8 @@ local DoodleUI = require("doodle.ui")
 local DoodleDB = require("doodle.storage.db")
 local DoodleSync = require("doodle.sync.sync")
 local Completion = require("doodle.tags.completion")
+local Exporter = require("doodle.migrations.exporter")
+local Importer = require("doodle.migrations.importer")
 
 ---@class Doodle
 ---@field config DoodleConfig
@@ -163,6 +165,56 @@ function Doodle.setup(self, partial_config)
             doodle:graph_view()
         end,
         { nargs = 0 }
+    )
+
+    vim.api.nvim_create_user_command(
+        'DoodleExport',
+        function(opts)
+            if not opts.args or opts.args == "" then
+                vim.notify("DoodleExport requires a path argument.", vim.log.levels.ERROR)
+                return
+            end
+
+            vim.notify("Starting Doodle export")
+
+            local success, msg = pcall(Exporter.run, opts.args, self._db)
+
+            if success then
+                vim.notify("Doodle export completed successfully to: " .. opts.args)
+            else
+                vim.notify("Doodle export failed: " .. msg, vim.log.levels.ERROR)
+                print("Doodle Export Error: " .. msg)
+            end
+        end,
+        {
+            nargs = 1,
+            complete = "dir"
+        }
+    )
+
+    vim.api.nvim_create_user_command(
+        'DoodleImport',
+        function(opts)
+            if not opts.args or opts.args == "" then
+                vim.notify("DoodleImport requires a path argument.", vim.log.levels.ERROR)
+                return
+            end
+
+            vim.notify("Starting Doodle import")
+
+            local success, msg = pcall(Importer.run, opts.args, self._db)
+
+            if success then
+                vim.notify("Doodle import completed successfully from: " .. opts.args)
+            else
+                vim.notify("Doodle import failed: " .. msg, vim.log.levels.ERROR)
+                print("Doodle Import Error: " .. msg)
+            end
+        end,
+        {
+            nargs = 1,
+            complete = "dir"
+        }
     )
 
     return self

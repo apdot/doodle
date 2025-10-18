@@ -679,9 +679,7 @@ end
 function DoodleDB:create_root_if_not_exists(root, branch)
     local dir = self._conn:select("directory", {
         where = DBUtil.where({
-            project = root,
-            branch = branch and branch or vim.NIL,
-            parent = vim.NIL
+            uuid = SyncUtil.hash(root .. (branch or ""))
         })
     })
 

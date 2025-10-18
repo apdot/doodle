@@ -14,6 +14,7 @@
 -   **Tagging:** Use `#tags` to categorize your notes, with built-in autocompletion.
 -   **Note Templates:** Create reusable templates for different types of notes.
 -   **Graph View:** Visualize the connections between your notes in an interactive force-directed graph.
+-   **Migrations:** Easily move your data in and out of Doodle using the Import and Export commands.
 
 ## ⚡️ Requirements
 -   Neovim >= 0.8
@@ -43,6 +44,7 @@ return {
               -- This is the only required setting for sync to work.
               -- Set it to the absolute path of your private notes repository.
               git_repo = "path/to/your/initialized/git/repository",
+              sync = true,
           }
       })
   end,
@@ -149,12 +151,16 @@ Doodle enhances standard markdown with powerful features for organization and co
 </div>
 
 #### Templating
- - Reusable Structures: Create reusable note structures for different purposes (e.g., meeting notes, daily logs) with the :DoodleCreateTemplate <name> command.
+ - Reusable Structures: Create reusable note structures for different purposes (e.g., meeting notes, daily logs) with the `:DoodleCreateTemplate <name>` command.
  - Telescope Integration: Use the Telescope picker to quickly find a template and create a new note from it, pre-filled with your content.
 
 <div align="center">
     <img alt="Template Demo" height="400" src="/assets/template_demo.gif" />
 </div>
+
+#### Migrations
+ - Export: Use the `:DoodleExport <path>` command to export your entire note database into structure of markdown files and directories, with metadata preserved in frontmatter.
+ - Import: Use the `:DoodleImport <path>` command to import data into Doodle. Each top-level folder within the specified import path is treated as a distinct project scope.
 
 ### 🔭 Telescope Integration: Find Anything, Instantly
 
