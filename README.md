@@ -197,4 +197,8 @@ Never worry about losing your notes or having them out of sync. Doodle uses a **
     <img alt="Link View Demo" height="400" src="/assets/sync_demo.gif" />
 </div>
 
+### Contributing
+
+All contributions are welcome! For major changes, please open an issue first to discuss what you would like to change. Pull requests are always appreciated.
+
 ---
