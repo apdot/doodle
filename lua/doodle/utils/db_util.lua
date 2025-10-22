@@ -87,7 +87,7 @@ function M.create_is_distinct(table_name, columns)
         if column ~= "created_at" and column ~= "updated_at" and column ~= "synced_at" then
             table.insert(
                 is_distinct,
-                ("%s.%s IS DISTINCT FROM excluded.%s"):format(table_name, column, column)
+                ("%s.%s != excluded.%s"):format(table_name, column, column)
             )
         end
     end
