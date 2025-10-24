@@ -251,21 +251,6 @@ function DoodleDB:get_blob(note_id)
     return blob[1]
 end
 
----@return table
-function DoodleDB:get_unsynced_blob()
-    local blob = self._conn:eval([[
-	SELECT * FROM blob
-	WHERE synced_at IS null OR updated_at > synced_at
-	ORDER BY created_at ASC
-    ]])
-
-    if not blob or #blob == 0 then
-        return {}
-    end
-
-    return blob
-end
-
 ---@param blob DoodleBlob
 function DoodleDB:update_blob(blob)
     self._conn:update("blob", {
@@ -455,22 +440,6 @@ function DoodleDB:get_directory(uuid)
     return directory[1]
 end
 
----@param table_name string
----@return table
-function DoodleDB:get_unsynced(table_name)
-    local directory = self._conn:eval(([[
-	SELECT * FROM %s
-	WHERE synced_at IS null OR updated_at > synced_at
-	ORDER BY created_at ASC
-    ]]):format(table_name))
-
-    if not directory or type(directory) == "boolean" then
-        return {}
-    end
-
-    return directory
-end
-
 ---@param uuid string
 function DoodleDB:delete_directory(uuid)
     local now = DBUtil.now()
@@ -607,15 +576,16 @@ end
 
 ---@param note_id string
 function DoodleDB:clear_tag(note_id)
-    self._conn:update("note_tag", {
-        where = DBUtil.dict({
-            note_id = note_id
-        }),
-        set = DBUtil.dict({
-            status = 2,
-            updated_at = DBUtil.now()
-        })
-    })
+    local sql = [[
+    UPDATE note_tag
+    SET status = 2, updated_at = :updated_at
+    WHERE note_id = :note_id;
+    ]]
+
+    self._conn:eval(sql, DBUtil.dict({
+        note_id = note_id,
+        updated_at = DBUtil.now()
+    }))
 end
 
 ---@param link Link
@@ -639,6 +609,22 @@ function DoodleDB:create_link(link)
     }))
 
     return uuid
+end
+
+---@param table_name string
+---@return table
+function DoodleDB:get_unsynced(table_name)
+    local directory = self._conn:eval(([[
+	SELECT * FROM %s
+	WHERE synced_at IS null OR updated_at > synced_at
+	ORDER BY created_at ASC
+    ]]):format(table_name))
+
+    if not directory or type(directory) == "boolean" then
+        return {}
+    end
+
+    return directory
 end
 
 ---@param table_name string
