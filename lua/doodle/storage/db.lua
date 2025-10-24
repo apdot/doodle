@@ -38,8 +38,53 @@ function DoodleDB:new(config)
     }, self)
 end
 
+function DoodleDB:ensure_indexes()
+    local idx_note_parent_title_created_at = [[
+        CREATE INDEX IF NOT EXISTS idx_note_parent_title_created_at 
+        ON note(parent, title, created_at);
+    ]]
+
+    local idx_note_project_branch = [[
+        CREATE INDEX IF NOT EXISTS idx_note_project_branch 
+        ON note(project, branch);
+    ]]
+
+    local idx_directory_parent_name_created_at = [[
+        CREATE INDEX IF NOT EXISTS idx_directory_parent_name_created_at 
+        ON directory(parent, name, created_at);
+    ]]
+
+    local idx_blob_note_id = [[
+        CREATE INDEX IF NOT EXISTS idx_blob_note_id 
+        ON blob(note_id);
+    ]]
+
+    local idx_link_src = [[
+        CREATE INDEX IF NOT EXISTS idx_link_src 
+        ON link(src);
+    ]]
+
+    local idx_link_dest = [[
+        CREATE INDEX IF NOT EXISTS idx_link_dest 
+        ON link(dest);
+    ]]
+
+    local idx_tag_name = [[
+        CREATE INDEX IF NOT EXISTS idx_tag_name 
+        ON tag(name);
+    ]]
+
+    self._conn:eval(idx_note_parent_title_created_at)
+    self._conn:eval(idx_note_project_branch)
+    self._conn:eval(idx_directory_parent_name_created_at)
+    self._conn:eval(idx_blob_note_id)
+    self._conn:eval(idx_link_src)
+    self._conn:eval(idx_link_dest)
+    self._conn:eval(idx_tag_name)
+end
+
 function DoodleDB:ensure_schema()
-    self._conn:execute "pragma foreign_keys = ON"
+    self._conn:execute "PRAGMA FOREIGN_KEYS = ON"
 
     local create_note_sql = [[
         CREATE TABLE IF NOT EXISTS note (
@@ -131,6 +176,8 @@ function DoodleDB:ensure_schema()
     self._conn:eval(create_tag_sql)
     self._conn:eval(create_note_tag_sql)
     self._conn:eval(create_link_sql)
+
+    self:ensure_indexes()
 end
 
 function DoodleDB:setup()
