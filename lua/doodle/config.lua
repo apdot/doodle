@@ -6,6 +6,7 @@ local Job = require("plenary.job")
 ---@field auto_save boolean
 ---@field sync boolean
 ---@field git_repo string
+---@field git_remote string
 ---@field hide_hint boolean
 ---@field project fun(): string
 ---@field branch fun(): string
@@ -31,6 +32,7 @@ function DoodleConfig.get_default()
         hide_hint = false,
         finder_height_factor = 0.4,
         finder_width_factor = 0.5,
+        git_remote = "origin main",
         project = function()
             return vim.fs.basename(vim.loop.cwd())
         end,
