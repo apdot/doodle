@@ -49,7 +49,7 @@ local function ensure_repo(settings)
         vim.notify("Directory at " .. settings.git_repo .. " is not a Git Repository", vim.log.levels.ERROR)
     end
 
-    local ok = GitUtil.ensure_main(settings.git_repo)
+    local ok = GitUtil.ensure_main(settings.git_repo, settings.git_remote)
     if not ok then
         local oplog = repo:joinpath(oplog_file)
         if not oplog:exists() then
@@ -60,7 +60,7 @@ local function ensure_repo(settings)
             synclog:write("[]", "w")
         end
 
-        return GitUtil.push({ oplog_file, synclog }, "initial commit", settings.git_repo)
+        return GitUtil.push({ oplog_file, synclog }, "initial commit", settings.git_repo, settings.git_remote)
     end
 
     return true
@@ -172,7 +172,7 @@ end
 
 ---@return boolean
 function DoodleSync:pull()
-    local ok, err = GitUtil.pull(self.settings.git_repo)
+    local ok, err = GitUtil.pull(self.settings.git_repo, self.settings.git_remote)
     if not ok then
         vim.notify("Git rebase failed with error: " .. err)
         return false
@@ -291,7 +291,7 @@ function DoodleSync:push()
 
     local ok = GitUtil.push(files, ("<%s>%s: update directories=%s notes=%s blobs=%s")
         :format(now, self.config.device_id, #oplog.directory, #oplog.note, #oplog.blob),
-        self.settings.git_repo)
+        self.settings.git_repo, self.settings.git_remote)
 
     if ok then
         update_config(self.settings, self.config)
