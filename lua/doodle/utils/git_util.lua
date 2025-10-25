@@ -3,11 +3,14 @@ local SyncUtil = require("doodle.utils.sync_util")
 local M = {}
 
 ---@param git_repo string
+---@param git_remote string
 ---@return boolean
-function M.ensure_main(git_repo)
+function M.ensure_main(git_repo, git_remote)
+    local remote_setting = vim.split(git_remote, " ")
+
     local ok, out = SyncUtil.run({
         "git",
-        "ls-remote", "--exit-code", "--heads", "origin", "main"
+        "ls-remote", "--exit-code", "--heads", remote_setting[0], remote_setting[1]
     }, git_repo)
 
     SyncUtil.run({
@@ -19,22 +22,27 @@ function M.ensure_main(git_repo)
 end
 
 ---@param git_repo string
+---@param git_remote string
 ---@return boolean
 ---@return string
-function M.pull(git_repo)
+function M.pull(git_repo, git_remote)
+    local remote_setting = vim.split(git_remote, " ")
+
     return SyncUtil.run({
         "git",
-        "pull", "--rebase", "origin", "main"
+        "pull", "--rebase", remote_setting[0], remote_setting[1]
     }, git_repo)
 end
 
 ---@param files string[]
 ---@param msg string
 ---@param git_repo string
+---@param git_remote string
 ---@return boolean
-function M.push(files, msg, git_repo)
+function M.push(files, msg, git_repo, git_remote)
     local ok = true
     local err = nil
+    local remote_setting = vim.split(git_remote, " ")
 
     ok, err = SyncUtil.run(vim.list_extend(
         { "git", "add" },
@@ -55,7 +63,7 @@ function M.push(files, msg, git_repo)
 
     ok, err = SyncUtil.run({
         "git",
-        "push", "origin", "main"
+        "push", remote_setting[0], remote_setting[1]
     }, git_repo)
 
     if not ok then
