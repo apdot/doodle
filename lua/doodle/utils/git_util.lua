@@ -13,10 +13,10 @@ function M.ensure_main(git_repo, git_remote)
         "ls-remote", "--exit-code", "--heads"
     }, remote_setting), git_repo)
 
-    SyncUtil.run(vim.list_extend({
+    SyncUtil.run({
         "git",
-        "branch", "-M", "main"
-    }, remote_setting), git_repo)
+        "branch", "-M", remote_setting[2]
+    }, git_repo)
 
     return ok
 end
