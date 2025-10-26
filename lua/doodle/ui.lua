@@ -67,6 +67,9 @@ function DoodleUI:new(settings, db)
 end
 
 function DoodleUI:save()
+    if not self.root then
+        self:init()
+    end
     NoteTag.bulk_map(Present.get_path(self.breadcrumbs),
         DBUtil.get_uuids(vim.tbl_values(self.notes)), self.db)
     DoodleDirectory.save(self.directories, self.db)
