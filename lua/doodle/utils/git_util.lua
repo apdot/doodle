@@ -8,15 +8,15 @@ local M = {}
 function M.ensure_main(git_repo, git_remote)
     local remote_setting = vim.split(git_remote, " ")
 
-    local ok, out = SyncUtil.run({
+    local ok, out = SyncUtil.run(vim.list_extend({
         "git",
-        "ls-remote", "--exit-code", "--heads", remote_setting[0], remote_setting[1]
-    }, git_repo)
+        "ls-remote", "--exit-code", "--heads"
+    }, remote_setting), git_repo)
 
-    SyncUtil.run({
+    SyncUtil.run(vim.list_extend({
         "git",
         "branch", "-M", "main"
-    }, git_repo)
+    }, remote_setting), git_repo)
 
     return ok
 end
@@ -28,10 +28,10 @@ end
 function M.pull(git_repo, git_remote)
     local remote_setting = vim.split(git_remote, " ")
 
-    return SyncUtil.run({
+    return SyncUtil.run(vim.list_extend({
         "git",
-        "pull", "--rebase", remote_setting[0], remote_setting[1]
-    }, git_repo)
+        "pull", "--rebase"
+    }, remote_setting), git_repo)
 end
 
 ---@param files string[]
@@ -61,10 +61,10 @@ function M.push(files, msg, git_repo, git_remote)
         return false
     end
 
-    ok, err = SyncUtil.run({
+    ok, err = SyncUtil.run(vim.list_extend({
         "git",
-        "push", remote_setting[0], remote_setting[1]
-    }, git_repo)
+        "push"
+    }, remote_setting), git_repo)
 
     if not ok then
         return false
